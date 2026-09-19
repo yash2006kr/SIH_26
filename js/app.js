@@ -13,6 +13,7 @@ import { DepartmentDataIngest } from "./data-ingest.js";
 let simulator;
 let copilot;
 let deptIngest;
+let latestSimulatorState = null;
 
 // Chart references
 let tempDewChart = null;
@@ -49,6 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize and start Simulator
   simulator = new WeatherSimulator((state) => {
+    latestSimulatorState = state;
     updateUI(state);
   });
 
@@ -70,7 +72,23 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("printReportBtn")?.addEventListener("click", () => {
-    window.print();
+    // Ensure audit view is active and populated
+    const auditView = document.getElementById("view-audit");
+    if (auditView && !auditView.classList.contains("active")) {
+      document.querySelectorAll(".view-content").forEach((v) => v.classList.remove("active"));
+      auditView.classList.add("active");
+      document.querySelectorAll(".nav-item").forEach((btn) => {
+        btn.classList.toggle("active", btn.getAttribute("data-view") === "audit");
+      });
+      const titleText = document.getElementById("pageTitleText");
+      if (titleText) titleText.textContent = "Government Meteorological QC Audit Dossier";
+    }
+    if (latestSimulatorState) {
+      renderOfficialDossier(latestSimulatorState);
+    }
+    setTimeout(() => {
+      window.print();
+    }, 50);
   });
 });
 
