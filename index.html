@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AURA SkyGuard AI · AWS Anomaly Detection & Trust Engine</title>
+    <title>SkyGuard AI &bull; Automatic Weather Station Anomaly Detection & Trust Platform</title>
     <meta
       name="description"
-      content="AI/ML-Driven Anomaly Detection & Trust Platform for Automatic Weather Stations (AWS) · Smart India Hackathon 2026 · Problem 26073"
+      content="AI/ML-Driven Anomaly Detection & Trust Platform for Automatic Weather Stations (AWS) &bull; Smart India Hackathon 2026 &bull; Problem 26073"
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <!-- Leaflet CSS -->
@@ -23,16 +23,28 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   </head>
   <body>
-    <div class="sky-atmosphere" aria-hidden="true"></div>
+    <!-- Interactive Custom Cursor -->
+    <div class="custom-cursor-dot" id="cursorDot"></div>
+    <div class="custom-cursor-ring" id="cursorRing"></div>
+
+    <!-- Dynamic Atmosphere Spotlight -->
+    <div class="sky-atmosphere" id="skyAtmosphere" aria-hidden="true"></div>
 
     <div class="app-container">
       <!-- SIDEBAR -->
       <aside class="sidebar">
         <div class="brand-section">
-          <div class="brand-logo">A</div>
+          <div class="brand-logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="brand-svg">
+              <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="rgba(14, 165, 233, 0.2)" stroke="#38bdf8" stroke-width="2"/>
+              <path d="M12 8a4 4 0 0 1 4 4" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+              <path d="M12 5a7 7 0 0 1 7 7" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="2 2"/>
+              <circle cx="12" cy="12" r="2" fill="#38bdf8"/>
+            </svg>
+          </div>
           <div class="brand-text">
-            <h1>AURA SkyGuard</h1>
-            <p>SIH 2026 · Problem 26073</p>
+            <h1>SkyGuard AI</h1>
+            <p>SIH 2026 &bull; Problem 26073</p>
           </div>
         </div>
 
@@ -84,42 +96,38 @@
               <span class="pulse-dot"></span>
               <span id="streamStatusText">LIVE INGESTION</span>
             </div>
+            <div class="top-title-divider"></div>
             <h2 class="page-heading" id="pageTitleText">Network Command Center</h2>
           </div>
 
           <div class="top-actions">
             <!-- Station Selector -->
             <div class="station-picker-wrap">
+              <span class="picker-label">Node:</span>
               <select id="stationSelect" class="station-select" aria-label="Select Weather Station"></select>
               <span class="select-arrow">▼</span>
             </div>
 
             <!-- Ingestion Stream Source Switcher -->
-            <select id="streamSourceSelect" class="station-select" style="font-size: 12px;">
-              <option value="meteo">🌐 Live Open-Meteo API</option>
-              <option value="synthetic">🛰️ Dept Telemetry Stream</option>
+            <select id="streamSourceSelect" class="station-select source-select">
+              <option value="meteo">🌐 Open-Meteo Live</option>
+              <option value="synthetic">🛰️ Dept Telemetry</option>
             </select>
 
             <!-- Network Trust Index Metric -->
             <div class="trust-gauge-mini">
-              <span>Network Trust:</span>
+              <span class="trust-title">Network Trust:</span>
               <span class="trust-val" id="topTrustVal">98%</span>
             </div>
 
             <!-- Pause / Play Stream Button -->
-            <button id="pauseStreamBtn" class="btn btn-secondary" title="Pause/Resume live feed">
+            <button id="pauseStreamBtn" class="btn btn-secondary btn-compact" title="Pause/Resume live feed">
               <span id="pauseIcon">⏸️</span>
             </button>
 
             <!-- Light / Dark Mode Toggle -->
             <button id="themeToggleBtn" class="btn-icon" title="Toggle Light/Dark Theme">
               <span id="themeIcon">☀️</span>
-            </button>
-
-            <!-- Launch AI Copilot Button -->
-            <button id="openCopilotBtn" class="btn btn-primary">
-              <span>✨</span>
-              <span>Ask AI Copilot</span>
             </button>
           </div>
         </header>
@@ -186,7 +194,7 @@
               <div class="kpi-foot">
                 <span>IMD QC Flag:</span>
                 <strong id="kpiQcFlag" style="font-size: 13px;">G</strong>
-                <span class="kpi-chip chip-normal" id="kpiQcChip">Validated</span>
+                <span class="kpi-chip chip-normal" id="kpiQcChip">Validated Good</span>
               </div>
             </div>
           </div>
@@ -198,7 +206,7 @@
               <div class="map-card-head">
                 <h3 class="card-title">
                   <span>🗺️</span>
-                  <span>Spatial AWS Network & Buddy Check</span>
+                  <span>Spatial AWS Network &amp; Buddy Check</span>
                 </h3>
                 <div class="map-legend">
                   <span class="legend-item"><i class="legend-dot" style="background: var(--c-teal);"></i> Normal</span>
@@ -218,9 +226,9 @@
                     <span>🧠</span>
                     <span>Explainable AI (XAI) Inspector</span>
                   </h3>
-                  <p style="font-size: 11.5px; color: var(--text-muted);">Real-Time Physics & Spatial Corroboration</p>
+                  <p style="font-size: 11.5px; color: var(--text-muted);">Real-Time Physics &amp; Spatial Corroboration</p>
                 </div>
-                <span class="status-badge-lg chip-normal" id="xaiStatusBadge">🟢 NORMAL</span>
+                <span class="status-badge-lg chip-normal" id="xaiStatusBadge">🟢 NOMINAL OBSERVATION</span>
               </div>
 
               <!-- Real Event vs Sensor Fault Probabilities -->
@@ -247,7 +255,7 @@
               </div>
 
               <!-- Human-Readable Reasons -->
-              <div class="reasons-title">AI Diagnostics & Physics Validation:</div>
+              <div class="reasons-title">AI Diagnostics &amp; Physics Validation:</div>
               <ul class="reasons-list" id="xaiReasonsList">
                 <li>All parameters satisfy Clausius-Clapeyron thermodynamic consistency.</li>
                 <li>Rate of change is within plausible atmospheric diffusion limits.</li>
@@ -267,7 +275,7 @@
               <div class="map-card-head">
                 <h3 class="card-title">
                   <span>📈</span>
-                  <span>Temperature & Dew Point (Rolling History)</span>
+                  <span>Temperature &amp; Dew Point (Rolling History)</span>
                 </h3>
               </div>
               <div class="chart-container-wrap">
@@ -279,7 +287,7 @@
               <div class="map-card-head">
                 <h3 class="card-title">
                   <span>⚡</span>
-                  <span>Real-Time Anomaly & Event Alerts</span>
+                  <span>Real-Time Anomaly &amp; Event Alerts</span>
                 </h3>
                 <span class="kpi-chip chip-normal" id="alertCountBadge">Live Feed</span>
               </div>
@@ -312,10 +320,10 @@
           <div class="card" style="margin-bottom: 20px;">
             <div class="map-card-head">
               <div>
-                <h2 style="font-size: 17px; font-weight: 700;">National AWS Network Topology & Spatial Buddy Links</h2>
+                <h2 style="font-size: 17px; font-weight: 700;">National AWS Network Topology &amp; Spatial Buddy Links</h2>
                 <p style="font-size: 12.5px; color: var(--text-muted);">
                   Click any station marker to inspect live telemetry, trust index, and peer spatial correlation.
-                  Dashed lines denote inter-station spatial buddy consensus links.
+                  Dashed lines denote inter-station spatial buddy consensus links. Powered by Esri Dark Gray Basemaps (zero watermarks).
                 </p>
               </div>
               <div class="map-legend">
@@ -331,11 +339,29 @@
 
         <!-- VIEW 3: TELEMETRY & ANALYTICS -->
         <section id="view-analytics" class="view-content">
+          <!-- Analytics Topbar Controls -->
+          <div class="analytics-control-bar card" style="margin-bottom: 20px; padding: 14px 20px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+              <div class="analytics-channel-pills" id="channelPills">
+                <button class="channel-pill active" data-channel="all">All Channels</button>
+                <button class="channel-pill" data-channel="temp">Temperature &amp; Dew Point</button>
+                <button class="channel-pill" data-channel="pressure">Barometric Pressure</button>
+                <button class="channel-pill" data-channel="humidity">Relative Humidity</button>
+                <button class="channel-pill" data-channel="wind">Wind &amp; Squall Vector</button>
+              </div>
+              <div class="analytics-stats-quick" id="quickStatsBar">
+                <span>Mean: <strong id="statMean">--</strong></span>
+                <span>Std Dev (σ): <strong id="statStd">--</strong></span>
+                <span>Rate of Change: <strong id="statRate">--/min</strong></span>
+              </div>
+            </div>
+          </div>
+
           <div class="dash-grid-2" style="margin-bottom: 20px;">
             <div class="card">
               <h3 class="card-title" style="margin-bottom: 14px;">
                 <span>📊</span>
-                <span>Multivariate Parameter Tracking (T / RH / P / Wind)</span>
+                <span>Multi-Sensor Dynamic Telemetry Envelope</span>
               </h3>
               <div class="chart-container-tall">
                 <canvas id="multiParamChart"></canvas>
@@ -356,20 +382,34 @@
             </div>
           </div>
 
-          <!-- Peer Station Side-by-Side Comparison -->
-          <div class="card">
-            <div class="map-card-head">
-              <h3 class="card-title">
-                <span>🔄</span>
-                <span>Spatial Buddy Cross-Comparison</span>
-              </h3>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 12px; color: var(--text-muted);">Compare with:</span>
-                <select id="compareStationSelect" class="station-select" style="padding: 5px 28px 5px 10px; font-size: 12px;"></select>
+          <!-- Radar & Buddy Grid -->
+          <div class="dash-grid-2">
+            <div class="card">
+              <div class="map-card-head">
+                <h3 class="card-title">
+                  <span>🕸️</span>
+                  <span>Sensor Health &amp; Operational Balance Radar</span>
+                </h3>
+              </div>
+              <div class="chart-container-tall">
+                <canvas id="sensorRadarChart"></canvas>
               </div>
             </div>
-            <div class="chart-container-wrap">
-              <canvas id="buddyCompareChart"></canvas>
+
+            <div class="card">
+              <div class="map-card-head">
+                <h3 class="card-title">
+                  <span>🔄</span>
+                  <span>Spatial Buddy Cross-Comparison</span>
+                </h3>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 12px; color: var(--text-muted);">Compare:</span>
+                  <select id="compareStationSelect" class="station-select" style="padding: 5px 28px 5px 10px; font-size: 12px;"></select>
+                </div>
+              </div>
+              <div class="chart-container-tall">
+                <canvas id="buddyCompareChart"></canvas>
+              </div>
             </div>
           </div>
         </section>
@@ -380,7 +420,7 @@
           <div class="sim-bench-header">
             <h2>🧪 Interactive AI Fault Injection Bench</h2>
             <p>
-              Simulate hardware failures, environmental fouling, and genuine severe weather events on the active station stream to evaluate how the AURA AI pipeline detects, explains, and reconstructs the data.
+              Simulate hardware failures, environmental fouling, and genuine severe weather events on the active station stream to evaluate how the SkyGuard AI pipeline detects, explains, and reconstructs the data.
             </p>
             <div class="fault-button-grid">
               <button class="fault-btn" id="btnInjectSpike">
@@ -414,11 +454,62 @@
             </div>
           </div>
 
+          <!-- Dataset Sources & Sample Download Guide -->
+          <div class="card dataset-guide-card" style="margin-bottom: 22px;">
+            <div class="map-card-head">
+              <h3 class="card-title">
+                <span>📂</span>
+                <span>Where to Get Sample &amp; Production Weather Datasets</span>
+              </h3>
+              <button class="btn btn-primary" id="downloadSampleCsvBtn">
+                <span>📥</span>
+                <span>Download Ready Sample CSV (100 Rows)</span>
+              </button>
+            </div>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+              You can test the Department CSV Quality Auditor using our pre-built synthetic weather log or real public datasets from meteorological repositories:
+            </p>
+            <div class="data-source-grid">
+              <div class="source-card">
+                <div class="source-icon">🏛️</div>
+                <div class="source-info">
+                  <strong>IMD Pune Data Supply Portal</strong>
+                  <p>Official portal for archival AWS/ARG hourly datasets across India.</p>
+                  <a href="https://dsp.imdpune.gov.in/" target="_blank" rel="noopener noreferrer">dsp.imdpune.gov.in &rarr;</a>
+                </div>
+              </div>
+              <div class="source-card">
+                <div class="source-icon">📈</div>
+                <div class="source-info">
+                  <strong>Kaggle Indian Weather Repositories</strong>
+                  <p>Historical hourly datasets for Delhi, Bengaluru, Mumbai, and cyclone tracks.</p>
+                  <a href="https://www.kaggle.com/datasets?search=india+weather" target="_blank" rel="noopener noreferrer">kaggle.com/datasets &rarr;</a>
+                </div>
+              </div>
+              <div class="source-card">
+                <div class="source-icon">🌐</div>
+                <div class="source-info">
+                  <strong>Open-Meteo Historical Weather API</strong>
+                  <p>Free, keyless API exporting hourly CSV files for any lat/long coordinates.</p>
+                  <a href="https://open-meteo.com/en/docs/historical-weather-api" target="_blank" rel="noopener noreferrer">open-meteo.com/archive &rarr;</a>
+                </div>
+              </div>
+              <div class="source-card">
+                <div class="source-icon">🇮🇳</div>
+                <div class="source-info">
+                  <strong>NITI Aayog NDAP Open Data</strong>
+                  <p>National Data &amp; Analytics Platform with climate and environmental logs.</p>
+                  <a href="https://ndap.niti.gov.in/" target="_blank" rel="noopener noreferrer">ndap.niti.gov.in &rarr;</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Department CSV Batch Ingestion Studio -->
           <div class="card" style="margin-bottom: 22px;">
             <h3 class="card-title" style="margin-bottom: 8px;">
               <span>📁</span>
-              <span>Department Batch Ingestion & CSV Quality Auditor</span>
+              <span>Department Batch Ingestion &amp; CSV Quality Auditor</span>
             </h3>
             <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 16px;">
               Ingest historical or operational telemetry logs from state departments (IMD/MoES) in CSV format.
@@ -428,7 +519,7 @@
             <div class="ingest-dropzone" id="csvDropzone">
               <div class="dropzone-icon">📥</div>
               <div class="dropzone-text">
-                <h3>Drag & Drop Department CSV File Here</h3>
+                <h3>Drag &amp; Drop Department CSV File Here</h3>
                 <p>Supports columns: Timestamp, Station_ID, Temperature, Humidity, Pressure, Wind, Rainfall</p>
               </div>
               <input type="file" id="csvFileInput" accept=".csv" style="display: none;" />
@@ -512,26 +603,134 @@
 
         <!-- VIEW 6: QC AUDIT & REPORTS -->
         <section id="view-audit" class="view-content">
-          <div class="card" style="margin-bottom: 22px;">
-            <div class="map-card-head">
-              <div>
-                <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">Official Disaster Management Quality Audit Report</h2>
-                <p style="font-size: 12.5px; color: var(--text-muted);">
-                  Compliant with Ministry of Earth Sciences (MoES) and WMO Quality Control standards.
-                </p>
-              </div>
-              <button class="btn btn-primary" id="printReportBtn">
-                <span>🖨️</span>
-                <span>Print / Save PDF Report</span>
-              </button>
+          <div class="audit-page-header">
+            <div>
+              <h2 style="font-size: 20px; font-weight: 700;">Government Meteorological Quality Assurance Dossier</h2>
+              <p style="font-size: 13px; color: var(--text-muted);">
+                Official certification dossier formatted for State Disaster Management Authorities (SDMA) &amp; NWP forecast teams.
+              </p>
             </div>
-            
-            <div style="margin-top: 14px; font-size: 13.5px; line-height: 1.6; color: var(--text-secondary);" id="auditProseContent">
-              <!-- Report content populated via JS -->
+            <button class="btn btn-primary" id="printReportBtn">
+              <span>🖨️</span>
+              <span>Print / Save Official PDF Dossier</span>
+            </button>
+          </div>
+
+          <!-- Official Government Report Document Container -->
+          <div class="official-report-document" id="printableDossier">
+            <!-- Document Header -->
+            <div class="report-doc-header">
+              <div class="govt-emblem-wrap">
+                <div class="govt-emblem-icon">🏛️</div>
+                <div class="govt-text">
+                  <div class="govt-title-top">GOVERNMENT OF INDIA &bull; MINISTRY OF EARTH SCIENCES</div>
+                  <div class="govt-title-main">INDIA METEOROLOGICAL DEPARTMENT (IMD)</div>
+                  <div class="govt-title-sub">NATIONAL AUTOMATIC WEATHER STATION QUALITY CONTROL &amp; AUDIT SYSTEM</div>
+                </div>
+              </div>
+              <div class="doc-meta-badge">
+                <div class="doc-badge-pill">OFFICIAL FORENSIC RECORD</div>
+                <div class="doc-meta-item">Doc Ref: <span id="docRefId">IMD/AWS-QC/2026/BLR-0421</span></div>
+                <div class="doc-meta-item">Date: <span id="docTimestamp">--</span></div>
+              </div>
+            </div>
+
+            <!-- Verification Verdict Banner -->
+            <div class="report-verdict-banner" id="dossierVerdictBanner">
+              <div class="verdict-stamp" id="dossierStampText">VERIFIED &bull; CERTIFIED GOOD</div>
+              <div class="verdict-summary" id="dossierVerdictSummary">
+                Observations from <strong>Bengaluru Central IMD</strong> satisfy all Clausius-Clapeyron thermodynamic laws, rate-of-change thresholds, and regional spatial consensus.
+              </div>
+            </div>
+
+            <!-- Station Dossier Overview -->
+            <div class="dossier-grid-summary">
+              <div class="dossier-meta-card">
+                <span class="meta-label">Station Identifier:</span>
+                <strong id="dossierStationId">BLR-IMD (WMO: 43295)</strong>
+              </div>
+              <div class="dossier-meta-card">
+                <span class="meta-label">Geographic Coordinates:</span>
+                <strong id="dossierGeoCoords">12.9716° N, 77.5946° E (920m MSL)</strong>
+              </div>
+              <div class="dossier-meta-card">
+                <span class="meta-label">Station Trust Score:</span>
+                <strong id="dossierTrustScore" style="color: var(--c-teal);">98% (High Reliability)</strong>
+              </div>
+              <div class="dossier-meta-card">
+                <span class="meta-label">NWP Ingestion Posture:</span>
+                <strong id="dossierNwpAction" style="color: var(--c-sky);">APPROVED FOR AUTOMATED INGEST</strong>
+              </div>
+            </div>
+
+            <!-- Forensic Sensor Inspection Table -->
+            <div class="dossier-section-title">1. Multi-Sensor Forensic Verification Matrix (WMO-No. 8 Standards)</div>
+            <table class="dossier-table">
+              <thead>
+                <tr>
+                  <th>Sensor Subsystem</th>
+                  <th>Observed Value</th>
+                  <th>WMO Tolerance Band</th>
+                  <th>Buddy Consensus Departure</th>
+                  <th>QC Flag</th>
+                  <th>Quarantine Status</th>
+                </tr>
+              </thead>
+              <tbody id="dossierTableBody">
+                <!-- Populated via JS -->
+              </tbody>
+            </table>
+
+            <!-- Explainable AI Mathematical Proof -->
+            <div class="dossier-section-title" style="margin-top: 24px;">2. Explainable AI (XAI) Mathematical Proof &amp; Spatial Consensus</div>
+            <div class="dossier-proof-box" id="dossierProofContent">
+              <!-- Populated via JS -->
+            </div>
+
+            <!-- Digital Signatures Block -->
+            <div class="dossier-signatures-wrap">
+              <div class="sig-block">
+                <div class="sig-stamp">DIGITALLY VERIFIED</div>
+                <div class="sig-title">Field Instrumentation Officer</div>
+                <div class="sig-sub">AWS Surface Network Division</div>
+              </div>
+              <div class="sig-block">
+                <div class="sig-stamp approved">APPROVED FOR NWP</div>
+                <div class="sig-title">Senior Meteorological QC Auditor</div>
+                <div class="sig-sub">Ministry of Earth Sciences, New Delhi</div>
+              </div>
+            </div>
+
+            <div class="dossier-footer-note">
+              This document is electronically generated by the SkyGuard AI Anomaly Detection Pipeline (SIH-2026 Problem 26073).
+              Valid for official meteorological records and disaster management situational awareness.
             </div>
           </div>
         </section>
       </div>
+    </div>
+
+    <!-- FLOATING AI ROBOT TRIGGER -->
+    <div class="floating-robot-wrap">
+      <button class="floating-robot-btn" id="floatingRobotBtn" aria-label="Ask SkyGuard AI Copilot" title="Ask SkyGuard AI Copilot">
+        <div class="robot-pulse-ring"></div>
+        <div class="robot-glow-aura"></div>
+        <div class="robot-avatar">
+          <svg viewBox="0 0 36 36" fill="none" class="robot-svg">
+            <line x1="18" y1="3" x2="18" y2="7" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="18" cy="3" r="2" fill="#38bdf8" class="antenna-glow"/>
+            <rect x="6" y="7" width="24" height="20" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+            <rect x="9" y="11" width="18" height="10" rx="3" fill="#030712" stroke="rgba(56, 189, 248, 0.4)"/>
+            <circle cx="13.5" cy="16" r="2.2" fill="#38bdf8" class="robot-eye left-eye"/>
+            <circle cx="22.5" cy="16" r="2.2" fill="#38bdf8" class="robot-eye right-eye"/>
+            <line x1="13" y1="23" x2="23" y2="23" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" class="robot-mouth"/>
+            <rect x="3" y="14" width="3" height="6" rx="1.5" fill="#38bdf8"/>
+            <rect x="30" y="14" width="3" height="6" rx="1.5" fill="#38bdf8"/>
+          </svg>
+        </div>
+        <div class="robot-badge-pulse">AI</div>
+      </button>
+      <div class="robot-tooltip">Ask SkyGuard AI Copilot</div>
     </div>
 
     <!-- AI COPILOT FLOATING DRAWER -->
@@ -539,8 +738,8 @@
     <aside class="ai-copilot-drawer" id="copilotDrawer">
       <div class="copilot-header">
         <div class="copilot-title">
-          <span>✨</span>
-          <span>AURA AI Weather Copilot</span>
+          <span>🤖</span>
+          <span>SkyGuard AI Weather Copilot</span>
         </div>
         <button class="btn-icon" id="closeCopilotBtn" style="border: none;">✕</button>
       </div>

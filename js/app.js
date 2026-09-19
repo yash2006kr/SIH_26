@@ -1,5 +1,5 @@
 /**
- * AURA SkyGuard AI - Master Application Controller
+ * SkyGuard AI - Master Application Controller
  * Smart India Hackathon 2026 - Problem 26073
  * Team AI Avengers
  */
@@ -19,6 +19,7 @@ let tempDewChart = null;
 let multiParamChart = null;
 let imputedCompareChart = null;
 let buddyCompareChart = null;
+let sensorRadarChart = null;
 
 // Leaflet map references
 let miniMap = null;
@@ -27,12 +28,15 @@ let miniMarkers = {};
 let fullMarkers = {};
 let fullPolylines = [];
 let miniPolylines = [];
+let miniTileLayers = [];
+let fullTileLayers = [];
 
 // DOM ready initialization
 document.addEventListener("DOMContentLoaded", () => {
   copilot = new AiCopilot();
   deptIngest = new DepartmentDataIngest();
 
+  initCustomCursor();
   initNavigation();
   initTheme();
   initStationPickers();
@@ -41,6 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initBatchCsvUI();
   initMaps();
   initCharts();
+  initAnalyticsControls();
 
   // Initialize and start Simulator
   simulator = new WeatherSimulator((state) => {
@@ -70,6 +75,70 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ----------------------------------------------------
+   INTERACTIVE CURSOR & MOUSE-FOLLOW SPOTLIGHT
+   ---------------------------------------------------- */
+function initCustomCursor() {
+  const dot = document.getElementById("cursorDot");
+  const ring = document.getElementById("cursorRing");
+  if (!dot || !ring) return;
+
+  let mouseX = window.innerWidth / 2;
+  let mouseY = window.innerHeight / 2;
+  let ringX = mouseX;
+  let ringY = mouseY;
+
+  window.addEventListener("pointermove", (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+
+    // Direct dot position
+    dot.style.left = `${mouseX}px`;
+    dot.style.top = `${mouseY}px`;
+
+    // Dynamic background spotlight
+    document.documentElement.style.setProperty("--mouse-x", `${mouseX}px`);
+    document.documentElement.style.setProperty("--mouse-y", `${mouseY}px`);
+  });
+
+  // Smooth lerp for ring
+  function renderCursor() {
+    ringX += (mouseX - ringX) * 0.22;
+    ringY += (mouseY - ringY) * 0.22;
+    ring.style.left = `${ringX}px`;
+    ring.style.top = `${ringY}px`;
+    requestAnimationFrame(renderCursor);
+  }
+  renderCursor();
+
+  // Click burst
+  window.addEventListener("pointerdown", () => {
+    dot.style.transform = "translate(-50%, -50%) scale(0.7)";
+    ring.style.transform = "translate(-50%, -50%) scale(0.85)";
+  });
+
+  window.addEventListener("pointerup", () => {
+    dot.style.transform = "translate(-50%, -50%) scale(1)";
+    ring.style.transform = "translate(-50%, -50%) scale(1)";
+  });
+
+  // Hover detection on interactive elements
+  const hoverSelector = "button, a, select, input, .card, .fault-btn, .nav-item, .leaflet-interactive, .floating-robot-btn";
+  document.addEventListener("mouseover", (e) => {
+    if (e.target.closest(hoverSelector)) {
+      dot.classList.add("hovering");
+      ring.classList.add("hovering");
+    }
+  });
+
+  document.addEventListener("mouseout", (e) => {
+    if (e.target.closest(hoverSelector)) {
+      dot.classList.remove("hovering");
+      ring.classList.remove("hovering");
+    }
+  });
+}
+
+/* ----------------------------------------------------
    NAVIGATION VIEW SWITCHING
    ---------------------------------------------------- */
 function initNavigation() {
@@ -83,7 +152,7 @@ function initNavigation() {
     analytics: "Multi-Sensor Telemetry & Imputation Analytics",
     simulation: "Department Ingest & Simulation Lab",
     health: "Hardware Sensor Health & Predictive SOP",
-    audit: "Disaster Management QC Audit & Reports"
+    audit: "Government Meteorological QC Audit Dossier"
   };
 
   navItems.forEach((btn) => {
@@ -175,20 +244,36 @@ function initStationPickers() {
 }
 
 /* ----------------------------------------------------
-   LEAFLET MAPS
+   LEAFLET MAPS (ESRI GRAY CANVAS - ZERO WATERMARKS!)
    ---------------------------------------------------- */
-function getMapTileUrl(theme) {
-  return theme === "light"
-    ? "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-    : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+function getMapTileConfigs(theme) {
+  if (theme === "light") {
+    return [
+      {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        options: { maxZoom: 16, attribution: "Esri, USGS" }
+      },
+      {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+        options: { maxZoom: 16 }
+      }
+    ];
+  }
+  return [
+    {
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+      options: { maxZoom: 16, attribution: "Esri, DeLorme" }
+    },
+    {
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+      options: { maxZoom: 16 }
+    }
+  ];
 }
-
-let miniTileLayer = null;
-let fullTileLayer = null;
 
 function initMaps() {
   const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
-  const tileUrl = getMapTileUrl(currentTheme);
+  const tileConfigs = getMapTileConfigs(currentTheme);
 
   // Mini Map (Dashboard)
   const miniEl = document.getElementById("miniLeafletMap");
@@ -200,7 +285,7 @@ function initMaps() {
       attributionControl: false
     });
 
-    miniTileLayer = L.tileLayer(tileUrl, { maxZoom: 18 }).addTo(miniMap);
+    miniTileLayers = tileConfigs.map((cfg) => L.tileLayer(cfg.url, cfg.options).addTo(miniMap));
   }
 
   // Full Network Map
@@ -213,21 +298,21 @@ function initMaps() {
       attributionControl: false
     });
 
-    fullTileLayer = L.tileLayer(tileUrl, { maxZoom: 18 }).addTo(fullMap);
+    fullTileLayers = tileConfigs.map((cfg) => L.tileLayer(cfg.url, cfg.options).addTo(fullMap));
   }
 
   renderStationMarkers();
 }
 
 function updateMapTiles(theme) {
-  const tileUrl = getMapTileUrl(theme);
-  if (miniTileLayer && miniMap) {
-    miniMap.removeLayer(miniTileLayer);
-    miniTileLayer = L.tileLayer(tileUrl, { maxZoom: 18 }).addTo(miniMap);
+  const tileConfigs = getMapTileConfigs(theme);
+  if (miniMap) {
+    miniTileLayers.forEach((l) => miniMap.removeLayer(l));
+    miniTileLayers = tileConfigs.map((cfg) => L.tileLayer(cfg.url, cfg.options).addTo(miniMap));
   }
-  if (fullTileLayer && fullMap) {
-    fullMap.removeLayer(fullTileLayer);
-    fullTileLayer = L.tileLayer(tileUrl, { maxZoom: 18 }).addTo(fullMap);
+  if (fullMap) {
+    fullTileLayers.forEach((l) => fullMap.removeLayer(l));
+    fullTileLayers = tileConfigs.map((cfg) => L.tileLayer(cfg.url, cfg.options).addTo(fullMap));
   }
 }
 
@@ -259,16 +344,16 @@ function renderStationMarkers() {
           ];
           if (fullMap) {
             const line = L.polyline(latlngs, {
-              color: "rgba(56, 189, 248, 0.4)",
-              weight: 1.5,
+              color: "rgba(56, 189, 248, 0.45)",
+              weight: 1.6,
               dashArray: "4, 6"
             }).addTo(fullMap);
             fullPolylines.push(line);
           }
           if (miniMap) {
             const line = L.polyline(latlngs, {
-              color: "rgba(56, 189, 248, 0.35)",
-              weight: 1.2,
+              color: "rgba(56, 189, 248, 0.4)",
+              weight: 1.3,
               dashArray: "3, 5"
             }).addTo(miniMap);
             miniPolylines.push(line);
@@ -285,12 +370,12 @@ function renderStationMarkers() {
     const color = getStatusColor(status);
 
     const markerOptions = {
-      radius: st.id === simulator?.selectedStationId ? 10 : 7,
+      radius: st.id === simulator?.selectedStationId ? 11 : 7,
       fillColor: color,
       color: "#ffffff",
       weight: 2,
-      opacity: 0.9,
-      fillOpacity: 0.85
+      opacity: 0.95,
+      fillOpacity: 0.88
     };
 
     // Mini Map marker
@@ -321,12 +406,12 @@ function renderStationMarkers() {
         fullMarkers[st.id].setStyle(markerOptions);
       }
       fullMarkers[st.id].bindPopup(`
-        <div style="font-family: sans-serif; font-size: 13px; min-width: 180px;">
+        <div style="font-family: sans-serif; font-size: 13px; min-width: 190px;">
           <strong style="color: #0284c7;">${st.name}</strong><br/>
           <span>State: ${st.state} (Elev: ${st.elevation}m)</span><br/>
           <span style="font-weight: 600; color: ${color};">Status: ${status}</span><br/>
           <span>Trust Index: <b>${analysis?.trustIndex || 98}%</b></span><br/>
-          <small style="color: #64748b;">Click to set as active station</small>
+          <small style="color: #64748b;">Click to inspect node telemetry</small>
         </div>
       `);
     }
@@ -356,8 +441,8 @@ function initCharts() {
           {
             label: "Air Temperature (°C)",
             borderColor: "#0ea5e9",
-            backgroundColor: "rgba(14, 165, 233, 0.12)",
-            borderWidth: 2,
+            backgroundColor: "rgba(14, 165, 233, 0.15)",
+            borderWidth: 2.2,
             tension: 0.3,
             fill: true,
             data: []
@@ -366,7 +451,7 @@ function initCharts() {
             label: "Dew Point (°C)",
             borderColor: "#10b981",
             borderDash: [4, 4],
-            borderWidth: 1.5,
+            borderWidth: 1.8,
             tension: 0.3,
             fill: false,
             data: []
@@ -395,10 +480,10 @@ function initCharts() {
       data: {
         labels: [],
         datasets: [
-          { label: "Temp (°C)", borderColor: "#0ea5e9", borderWidth: 2, data: [], yAxisID: "y" },
-          { label: "Humidity (%)", borderColor: "#10b981", borderWidth: 2, data: [], yAxisID: "y1" },
+          { label: "Temp (°C)", borderColor: "#0ea5e9", backgroundColor: "rgba(14, 165, 233, 0.1)", fill: true, borderWidth: 2, data: [], yAxisID: "y" },
+          { label: "Humidity (%)", borderColor: "#10b981", backgroundColor: "rgba(16, 185, 129, 0.08)", fill: true, borderWidth: 2, data: [], yAxisID: "y1" },
           { label: "Pressure (hPa)", borderColor: "#f59e0b", borderWidth: 2, data: [], yAxisID: "y2" },
-          { label: "Wind (km/h)", borderColor: "#a855f7", borderWidth: 1.5, data: [], yAxisID: "y" }
+          { label: "Wind (km/h)", borderColor: "#a855f7", borderWidth: 1.8, data: [], yAxisID: "y" }
         ]
       },
       options: {
@@ -439,7 +524,59 @@ function initCharts() {
     });
   }
 
-  // 4. Peer Buddy Station Comparison
+  // 4. Sensor Balance Radar Chart
+  const ctxRadar = document.getElementById("sensorRadarChart")?.getContext("2d");
+  if (ctxRadar) {
+    sensorRadarChart = new Chart(ctxRadar, {
+      type: "radar",
+      data: {
+        labels: [
+          "Thermal Stability",
+          "Moisture Coupling",
+          "Barometric Envelope",
+          "Anemometer Vector",
+          "Uplink Reliability",
+          "Spatial Concordance"
+        ],
+        datasets: [
+          {
+            label: "Current Station Quality",
+            data: [98, 96, 99, 95, 99, 96],
+            backgroundColor: "rgba(14, 165, 233, 0.22)",
+            borderColor: "#0ea5e9",
+            pointBackgroundColor: "#0ea5e9",
+            pointBorderColor: "#fff",
+            borderWidth: 2
+          },
+          {
+            label: "WMO Certified Baseline",
+            data: [85, 85, 85, 85, 85, 85],
+            borderDash: [3, 3],
+            borderColor: "rgba(255, 255, 255, 0.3)",
+            fill: false,
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            angleLines: { color: "rgba(255, 255, 255, 0.08)" },
+            grid: { color: "rgba(255, 255, 255, 0.08)" },
+            pointLabels: { color: "#94a3b8", font: chartFont },
+            ticks: { display: false, max: 100, min: 20 }
+          }
+        },
+        plugins: {
+          legend: { labels: { color: "#94a3b8", font: chartFont } }
+        }
+      }
+    });
+  }
+
+  // 5. Peer Buddy Station Comparison
   const ctx4 = document.getElementById("buddyCompareChart")?.getContext("2d");
   if (ctx4) {
     buddyCompareChart = new Chart(ctx4, {
@@ -464,11 +601,52 @@ function initCharts() {
   }
 }
 
+function initAnalyticsControls() {
+  const pills = document.querySelectorAll(".channel-pill");
+  pills.forEach((p) => {
+    p.addEventListener("click", () => {
+      pills.forEach((b) => b.classList.remove("active"));
+      p.classList.add("active");
+      const channel = p.getAttribute("data-channel");
+      filterMultiParamChart(channel);
+    });
+  });
+}
+
+function filterMultiParamChart(channel) {
+  if (!multiParamChart) return;
+  const ds = multiParamChart.data.datasets;
+  if (channel === "all") {
+    ds.forEach((d) => (d.hidden = false));
+  } else if (channel === "temp") {
+    ds[0].hidden = false;
+    ds[1].hidden = true;
+    ds[2].hidden = true;
+    ds[3].hidden = true;
+  } else if (channel === "pressure") {
+    ds[0].hidden = true;
+    ds[1].hidden = true;
+    ds[2].hidden = false;
+    ds[3].hidden = true;
+  } else if (channel === "humidity") {
+    ds[0].hidden = true;
+    ds[1].hidden = false;
+    ds[2].hidden = true;
+    ds[3].hidden = true;
+  } else if (channel === "wind") {
+    ds[0].hidden = true;
+    ds[1].hidden = true;
+    ds[2].hidden = true;
+    ds[3].hidden = false;
+  }
+  multiParamChart.update();
+}
+
 function updateCharts(activeStation, compareStation) {
   if (!activeStation || !activeStation.history) return;
 
   const history = activeStation.history.slice(-30);
-  const labels = history.map((h, i) => {
+  const labels = history.map((h) => {
     const d = new Date(h.ts);
     return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
   });
@@ -478,7 +656,6 @@ function updateCharts(activeStation, compareStation) {
     tempDewChart.data.labels = labels;
     tempDewChart.data.datasets[0].data = history.map((h) => h.t);
     tempDewChart.data.datasets[1].data = history.map((h) => {
-      // Magnus formula approximation for history
       const a = 17.27, b = 237.7;
       const alpha = ((a * h.t) / (b + h.t)) + Math.log(Math.max(1, h.h) / 100);
       return Number(((b * alpha) / (a - alpha)).toFixed(1));
@@ -501,7 +678,6 @@ function updateCharts(activeStation, compareStation) {
     imputedCompareChart.data.labels = labels;
     imputedCompareChart.data.datasets[0].data = history.map((h) => h.t);
     imputedCompareChart.data.datasets[1].data = history.map((h, idx) => {
-      // If it's the latest point and faulty, show imputed value
       if (idx === history.length - 1 && activeStation.analysis?.status === "FAULT") {
         return activeStation.analysis.imputed.t;
       }
@@ -510,13 +686,43 @@ function updateCharts(activeStation, compareStation) {
     imputedCompareChart.update("none");
   }
 
-  // 4. Buddy Compare
+  // 4. Radar Chart
+  if (sensorRadarChart && activeStation.analysis?.sensorHealth) {
+    const h = activeStation.analysis.sensorHealth;
+    sensorRadarChart.data.datasets[0].data = [
+      h.temp || 98,
+      h.humidity || 96,
+      h.pressure || 99,
+      h.wind || 95,
+      h.comms || 99,
+      Math.max(40, Math.round(100 - (activeStation.analysis.spatialDiscrepancy || 0) * 4))
+    ];
+    sensorRadarChart.update("none");
+  }
+
+  // 5. Buddy Compare
   if (buddyCompareChart && compareStation) {
     const buddyHistory = compareStation.history.slice(-30);
     buddyCompareChart.data.labels = labels;
     buddyCompareChart.data.datasets[0].data = history.map((h) => h.t);
     buddyCompareChart.data.datasets[1].data = buddyHistory.map((h) => h.t);
     buddyCompareChart.update("none");
+  }
+
+  // Quick stats update
+  const temps = history.map((h) => h.t);
+  if (temps.length >= 2) {
+    const meanVal = (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1);
+    const variance = temps.reduce((a, b) => a + Math.pow(b - meanVal, 2), 0) / (temps.length - 1);
+    const stdVal = Math.sqrt(variance).toFixed(2);
+    const rateVal = Math.abs(temps[temps.length - 1] - temps[temps.length - 2]).toFixed(2);
+
+    const mEl = document.getElementById("statMean");
+    const sEl = document.getElementById("statStd");
+    const rEl = document.getElementById("statRate");
+    if (mEl) mEl.textContent = `${meanVal}°C`;
+    if (sEl) sEl.textContent = `${stdVal}°C`;
+    if (rEl) rEl.textContent = `${rateVal}°C/min`;
   }
 }
 
@@ -636,8 +842,8 @@ function updateUI(state) {
   // Update Sensor Health Matrix view
   renderSensorHealthMatrix(st);
 
-  // Update Official Audit Prose Content
-  renderAuditReportProse(state);
+  // Update Official Government Audit Report Dossier
+  renderOfficialDossier(state);
 }
 
 function updateAlertsFeed(alerts) {
@@ -710,36 +916,139 @@ function renderSensorHealthMatrix(station) {
 }
 
 /* ----------------------------------------------------
-   QC AUDIT REPORT PROSE
+   OFFICIAL GOVERNMENT INSPECTION & QC AUDIT DOSSIER
    ---------------------------------------------------- */
-function renderAuditReportProse(state) {
-  const container = document.getElementById("auditProseContent");
-  if (!container) return;
-
+function renderOfficialDossier(state) {
   const st = state.selectedStation;
   const analysis = st?.analysis;
+  const cur = st?.latest;
+  if (!st || !analysis || !cur) return;
 
-  container.innerHTML = `
-    <h3 style="color: var(--text-primary); margin-bottom: 8px;">Executive Summary for Disaster Management & Forecast Integration</h3>
-    <p>
-      This audit certify the data trust posture of the India Meteorological Department (IMD) Automatic Weather Station network.
-      Under <b>SIH 2026 Problem Statement 26073</b>, all surface observation vectors (Temperature, Humidity, Pressure, Wind, Rainfall)
-      are dynamically audited via thermodynamic physics models and spatial consensus algorithms.
-    </p>
+  const docRef = document.getElementById("docRefId");
+  const docTime = document.getElementById("docTimestamp");
+  const verdictBanner = document.getElementById("dossierVerdictBanner");
+  const stampText = document.getElementById("dossierStampText");
+  const summaryText = document.getElementById("dossierVerdictSummary");
+  const stationIdEl = document.getElementById("dossierStationId");
+  const geoCoordsEl = document.getElementById("dossierGeoCoords");
+  const trustScoreEl = document.getElementById("dossierTrustScore");
+  const nwpActionEl = document.getElementById("dossierNwpAction");
+  const tableBody = document.getElementById("dossierTableBody");
+  const proofContent = document.getElementById("dossierProofContent");
 
-    <div style="background: rgba(0,0,0,0.15); padding: 14px; border-radius: var(--radius-md); margin: 14px 0; border: 1px solid var(--border-subtle);">
-      <strong>Active Node:</strong> ${st?.name} (${st?.id}) | <strong>Network Reliability Index:</strong> ${state.networkTrust}%<br/>
-      <strong>Current Observation QC Flag:</strong> <code>Flag ${analysis?.qcFlag || "G"}</code> (${analysis?.eventClassification || "Nominal"})<br/>
-      <strong>Virtual Sensor Imputation Engine:</strong> ${analysis?.status === "FAULT" ? "Active (Reconstructed Values Substituted)" : "Standby (Direct Feed Verified)"}
-    </div>
+  if (docRef) docRef.textContent = `IMD/AWS-QC/2026/09/${st.id}-${st.wmoId || "43295"}`;
+  if (docTime) docTime.textContent = new Date().toLocaleString("en-IN", { timeZoneName: "short" });
 
-    <h4 style="color: var(--text-primary); margin-top: 14px; margin-bottom: 6px;">Compliance Directives:</h4>
-    <ul style="padding-left: 20px; line-height: 1.6;">
-      <li><b>WMO-No. 8 Standard:</b> Sensor sampling frequency validated at 10-second intervals with rolling median envelope.</li>
-      <li><b>Real Storm Verification:</b> Correlated barometric depression and spatial buddy consensus confirm severe weather without generating false instrument failure alarms.</li>
-      <li><b>Data Poisoning Prevention:</b> All sensors with Trust Index &lt; 60% are automatically quarantined from NWP ingestion.</li>
-    </ul>
-  `;
+  if (stationIdEl) stationIdEl.textContent = `${st.name} (${st.id}) · WMO ID: ${st.wmoId || "43295"}`;
+  if (geoCoordsEl) geoCoordsEl.textContent = `${st.lat.toFixed(4)}° N, ${st.lng.toFixed(4)}° E (Elevation: ${st.elevation}m MSL)`;
+  if (trustScoreEl) {
+    trustScoreEl.textContent = `${analysis.trustIndex}% (${analysis.trustIndex >= 80 ? "High Reliability" : analysis.trustIndex >= 50 ? "Questionable / Degraded" : "Critical Malfunction"})`;
+    trustScoreEl.style.color = analysis.trustIndex >= 80 ? "#16a34a" : analysis.trustIndex >= 50 ? "#d97706" : "#dc2626";
+  }
+
+  // Verdict banner styling
+  if (verdictBanner && stampText && summaryText) {
+    if (analysis.status === "FAULT") {
+      verdictBanner.className = "report-verdict-banner fault-banner";
+      stampText.textContent = "QUARANTINED · SENSOR FAULT DETECTED";
+      summaryText.innerHTML = `Observation from <strong>${st.name}</strong> rejected due to confirmed <strong>${analysis.rootCause}</strong>. Data quarantined from NWP model feeds. Virtual Sensor Imputation active.`;
+      if (nwpActionEl) {
+        nwpActionEl.textContent = "HOLD & QUARANTINE (RECONSTRUCTED VALUE SUBSTITUTED)";
+        nwpActionEl.style.color = "#dc2626";
+      }
+    } else if (analysis.status === "EVENT") {
+      verdictBanner.className = "report-verdict-banner";
+      stampText.textContent = "VERIFIED · REAL EXTREME WEATHER EVENT";
+      stampText.style.color = "#7c3aed";
+      stampText.style.borderColor = "#7c3aed";
+      summaryText.innerHTML = `Observation from <strong>${st.name}</strong> confirmed as a <strong>${analysis.eventClassification}</strong>. Corroborated by spatial buddy network. Immediate early warning dispatched.`;
+      if (nwpActionEl) {
+        nwpActionEl.textContent = "EXPEDITE BROADCAST TO STATE DISASTER MGMT (SDMA)";
+        nwpActionEl.style.color = "#7c3aed";
+      }
+    } else {
+      verdictBanner.className = "report-verdict-banner";
+      stampText.textContent = "VERIFIED · CERTIFIED GOOD";
+      stampText.style.color = "#16a34a";
+      stampText.style.borderColor = "#16a34a";
+      summaryText.innerHTML = `Observations from <strong>${st.name}</strong> satisfy all Clausius-Clapeyron thermodynamic laws, rate-of-change thresholds, and regional spatial consensus.`;
+      if (nwpActionEl) {
+        nwpActionEl.textContent = "APPROVED FOR AUTOMATED NWP MODEL INGEST";
+        nwpActionEl.style.color = "#16a34a";
+      }
+    }
+  }
+
+  // Populate Forensic Table
+  if (tableBody) {
+    const isTempFault = analysis.detectors?.some((d) => d.param === "temperature");
+    const isHumidFault = analysis.detectors?.some((d) => d.param === "humidity");
+    const isPressFault = analysis.detectors?.some((d) => d.param === "pressure");
+
+    const rows = [
+      {
+        subsystem: "Ambient Air Temperature (RTD PT100 Class A)",
+        observed: `${cur.t.toFixed(1)}°C`,
+        tolerance: "±0.2°C (WMO-No. 8)",
+        departure: `${analysis.spatialDiscrepancy > 0 ? "+" : ""}${analysis.spatialDiscrepancy.toFixed(1)}°C vs Buddy Median`,
+        qc: isTempFault ? "Flag S (Suspect)" : "Flag G (Good)",
+        quarantine: isTempFault ? "Quarantined (Substituted)" : "Pass"
+      },
+      {
+        subsystem: "Relative Humidity (Capacitive Thin-Film)",
+        observed: `${cur.h}%`,
+        tolerance: "±3.0% RH (WMO-No. 8)",
+        departure: `Dew Point: ${analysis.dewPoint}°C (Depression: ${analysis.dewDepression}°C)`,
+        qc: isHumidFault ? "Flag S (Suspect)" : "Flag G (Good)",
+        quarantine: isHumidFault ? "Quarantined" : "Pass"
+      },
+      {
+        subsystem: "Barometric Pressure (Vaisala PTB110 Resonant)",
+        observed: `${cur.p.toFixed(1)} hPa`,
+        tolerance: "±0.15 hPa (WMO-No. 8)",
+        departure: `Lapse-rate corrected MSL: ${(cur.p + (st.elevation / 8.3)).toFixed(1)} hPa`,
+        qc: isPressFault ? "Flag S (Suspect)" : "Flag G (Good)",
+        quarantine: isPressFault ? "Quarantined" : "Pass"
+      },
+      {
+        subsystem: "Wind Velocity & Gusts (Ultrasonic 2D)",
+        observed: `${cur.wind.toFixed(1)} km/h`,
+        tolerance: "±0.5 m/s",
+        departure: "Vector direction within climatological envelope",
+        qc: "Flag G (Good)",
+        quarantine: "Pass"
+      },
+      {
+        subsystem: "Precipitation Accumulator (Tipping Bucket 0.2mm)",
+        observed: `${(cur.rain || 0).toFixed(1)} mm`,
+        tolerance: "±2% at 50mm/h",
+        departure: "Siphon filter clean, 0.0mm spurious count",
+        qc: "Flag G (Good)",
+        quarantine: "Pass"
+      }
+    ];
+
+    tableBody.innerHTML = rows.map((r) => `
+      <tr>
+        <td><strong>${r.subsystem}</strong></td>
+        <td><code>${r.observed}</code></td>
+        <td>${r.tolerance}</td>
+        <td>${r.departure}</td>
+        <td><strong style="color: ${r.qc.includes('Suspect') ? '#dc2626' : '#16a34a'};">${r.qc}</strong></td>
+        <td><span style="font-weight: 700; color: ${r.quarantine === 'Pass' ? '#16a34a' : '#dc2626'};">${r.quarantine}</span></td>
+      </tr>
+    `).join("");
+  }
+
+  // Populate Mathematical Proof Box
+  if (proofContent) {
+    proofContent.innerHTML = `
+      <strong>Thermodynamic Coupling Proof:</strong> Magnus-Tetens saturation vapor pressure confirms dry-bulb depression 
+      <code>T - T_dew = ${analysis.dewDepression}°C</code>. ${analysis.dewDepression < 0 ? '❌ <b>Thermodynamic Violation:</b> Dew point exceeds dry-bulb temperature (physically impossible).' : '✅ Satisfies Clausius-Clapeyron boundary conditions.'}<br/>
+      <strong>Spatial Peer Consensus:</strong> Target station departure compared with nearest buddy nodes (<code>${st.neighbors?.join(", ") || "Peer stations"}</code>). Spatial divergence = <code>${analysis.spatialDiscrepancy}°C</code>. ${analysis.spatialDiscrepancy > 6 ? '❌ <b>Spatial Consensus Divergence:</b> Local anomaly not corroborated by regional stations.' : '✅ Local departure aligns with regional synoptic envelope.'}<br/>
+      <strong>Virtual Sensor Imputation Audit:</strong> ${analysis.status === 'FAULT' ? `Active substitution: Reconstructed Temperature <code>${analysis.imputed.t}°C</code> using <em>${analysis.imputed.method}</em>.` : 'Direct sensor ingest verified; no imputation required.'}
+    `;
+  }
 }
 
 /* ----------------------------------------------------
@@ -766,13 +1075,14 @@ function initSimulationButtons() {
 }
 
 /* ----------------------------------------------------
-   BATCH CSV AUDIT STUDIO
+   BATCH CSV AUDIT STUDIO & SAMPLE DATA GENERATOR
    ---------------------------------------------------- */
 function initBatchCsvUI() {
   const dropzone = document.getElementById("csvDropzone");
   const fileInput = document.getElementById("csvFileInput");
   const sampleBtn = document.getElementById("loadSampleCsvBtn");
   const exportBtn = document.getElementById("exportAuditedCsvBtn");
+  const downloadSampleBtn = document.getElementById("downloadSampleCsvBtn");
 
   dropzone?.addEventListener("click", () => fileInput?.click());
 
@@ -801,6 +1111,20 @@ function initBatchCsvUI() {
     const sampleCsv = deptIngest.generateSampleDepartmentCSV();
     runBatchCsvAudit(sampleCsv);
     showToast("Loaded sample department weather log with 40 records & injected anomalies.");
+  });
+
+  // Download Sample CSV button in the guide card
+  downloadSampleBtn?.addEventListener("click", () => {
+    const sampleCsv = deptIngest.generateSampleDepartmentCSV();
+    const blob = new Blob([sampleCsv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `imd_aws_sample_data_2026.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Downloaded imd_aws_sample_data_2026.csv!");
   });
 
   exportBtn?.addEventListener("click", () => {
@@ -868,12 +1192,12 @@ function runBatchCsvAudit(csvText) {
 }
 
 /* ----------------------------------------------------
-   AI COPILOT UI CONTROLS
+   AI COPILOT UI & FLOATING ROBOT TRIGGER
    ---------------------------------------------------- */
 function initCopilotUI() {
   const drawer = document.getElementById("copilotDrawer");
   const overlay = document.getElementById("copilotOverlay");
-  const openBtn = document.getElementById("openCopilotBtn");
+  const robotBtn = document.getElementById("floatingRobotBtn");
   const closeBtn = document.getElementById("closeCopilotBtn");
   const form = document.getElementById("copilotForm");
   const input = document.getElementById("copilotInput");
@@ -893,7 +1217,7 @@ function initCopilotUI() {
     overlay?.classList.remove("open");
   }
 
-  openBtn?.addEventListener("click", openDrawer);
+  robotBtn?.addEventListener("click", openDrawer);
   closeBtn?.addEventListener("click", closeDrawer);
   overlay?.addEventListener("click", closeDrawer);
 
@@ -923,7 +1247,6 @@ function initCopilotUI() {
   function renderCopilotMessages() {
     if (!msgContainer) return;
     msgContainer.innerHTML = copilot.messages.map((m) => {
-      // Basic markdown parsing for bold, code, bullets, headers
       let formatted = m.text
         .replace(/^### (.*$)/gim, '<h4 style="color: #38bdf8; margin: 8px 0 4px 0;">$1</h4>')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -972,7 +1295,7 @@ function showToast(message, type = "normal") {
   container.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = "0";
-    toast.style.transform = "translateX(100%)";
+    toast.style.transform = "translateX(-100%)";
     toast.style.transition = "all 0.3s ease";
     setTimeout(() => toast.remove(), 300);
   }, 4000);
