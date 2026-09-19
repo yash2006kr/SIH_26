@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: skyguard-ai
+    runtime: static
+    buildCommand: echo "static site"
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache

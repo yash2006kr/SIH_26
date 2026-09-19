@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AURA SkyGuard AI · AWS Anomaly Detection & Trust Engine</title>
+    <meta
+      name="description"
+      content="AI/ML-Driven Anomaly Detection & Trust Platform for Automatic Weather Stations (AWS) · Smart India Hackathon 2026 · Problem 26073"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- App CSS -->
+    <link rel="stylesheet" href="css/styles.css" />
+    <!-- Chart.js & Leaflet JS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  </head>
+  <body>
+    <div class="sky-atmosphere" aria-hidden="true"></div>
+
+    <div class="app-container">
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="brand-section">
+          <div class="brand-logo">A</div>
+          <div class="brand-text">
+            <h1>AURA SkyGuard</h1>
+            <p>SIH 2026 · Problem 26073</p>
+          </div>
+        </div>
+
+        <nav class="nav-links">
+          <button class="nav-item active" data-view="dashboard">
+            <span class="icon">🧭</span>
+            <span>Dashboard</span>
+          </button>
+          <button class="nav-item" data-view="mapview">
+            <span class="icon">🗺️</span>
+            <span>Spatial AWS Map</span>
+          </button>
+          <button class="nav-item" data-view="analytics">
+            <span class="icon">📊</span>
+            <span>Telemetry & Analytics</span>
+          </button>
+          <button class="nav-item" data-view="simulation">
+            <span class="icon">🔬</span>
+            <span>Simulation & Dept Ingest</span>
+            <span class="nav-badge" id="simBadge">Bench</span>
+          </button>
+          <button class="nav-item" data-view="health">
+            <span class="icon">🛠️</span>
+            <span>Sensor Health & SOP</span>
+          </button>
+          <button class="nav-item" data-view="audit">
+            <span class="icon">📄</span>
+            <span>QC Audit & Reports</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="sih-badge">
+            <div style="font-size: 20px;">🛡️</div>
+            <div>
+              <strong>Team AI Avengers</strong>
+              <span>MoES / IMD Disaster Mgmt</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT WRAPPER -->
+      <div class="main-wrapper">
+        <!-- TOPBAR -->
+        <header class="topbar">
+          <div class="top-left">
+            <div class="live-indicator">
+              <span class="pulse-dot"></span>
+              <span id="streamStatusText">LIVE INGESTION</span>
+            </div>
+            <h2 class="page-heading" id="pageTitleText">Network Command Center</h2>
+          </div>
+
+          <div class="top-actions">
+            <!-- Station Selector -->
+            <div class="station-picker-wrap">
+              <select id="stationSelect" class="station-select" aria-label="Select Weather Station"></select>
+              <span class="select-arrow">▼</span>
+            </div>
+
+            <!-- Ingestion Stream Source Switcher -->
+            <select id="streamSourceSelect" class="station-select" style="font-size: 12px;">
+              <option value="meteo">🌐 Live Open-Meteo API</option>
+              <option value="synthetic">🛰️ Dept Telemetry Stream</option>
+            </select>
+
+            <!-- Network Trust Index Metric -->
+            <div class="trust-gauge-mini">
+              <span>Network Trust:</span>
+              <span class="trust-val" id="topTrustVal">98%</span>
+            </div>
+
+            <!-- Pause / Play Stream Button -->
+            <button id="pauseStreamBtn" class="btn btn-secondary" title="Pause/Resume live feed">
+              <span id="pauseIcon">⏸️</span>
+            </button>
+
+            <!-- Light / Dark Mode Toggle -->
+            <button id="themeToggleBtn" class="btn-icon" title="Toggle Light/Dark Theme">
+              <span id="themeIcon">☀️</span>
+            </button>
+
+            <!-- Launch AI Copilot Button -->
+            <button id="openCopilotBtn" class="btn btn-primary">
+              <span>✨</span>
+              <span>Ask AI Copilot</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- VIEW 1: DASHBOARD -->
+        <section id="view-dashboard" class="view-content active">
+          <!-- KPI Metric Cards -->
+          <div class="kpi-grid">
+            <div class="card kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-title">Air Temperature</span>
+                <span class="kpi-icon">🌡️</span>
+              </div>
+              <div class="kpi-value-wrap">
+                <span class="kpi-value" id="kpiTemp">--</span>
+                <span class="kpi-unit">°C</span>
+              </div>
+              <div class="kpi-foot">
+                <span>Dew Point:</span>
+                <strong id="kpiDewPoint">--°C</strong>
+                <span class="kpi-chip chip-normal" id="kpiTempChip">Normal</span>
+              </div>
+            </div>
+
+            <div class="card kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-title">Relative Humidity</span>
+                <span class="kpi-icon">💧</span>
+              </div>
+              <div class="kpi-value-wrap">
+                <span class="kpi-value" id="kpiHumidity">--</span>
+                <span class="kpi-unit">%</span>
+              </div>
+              <div class="kpi-foot">
+                <span>Vapor Saturation:</span>
+                <strong id="kpiVapor">Nominal</strong>
+              </div>
+            </div>
+
+            <div class="card kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-title">Barometric Pressure</span>
+                <span class="kpi-icon">🧭</span>
+              </div>
+              <div class="kpi-value-wrap">
+                <span class="kpi-value" id="kpiPressure">--</span>
+                <span class="kpi-unit">hPa</span>
+              </div>
+              <div class="kpi-foot">
+                <span>Sea Level MSL:</span>
+                <strong id="kpiMsl">Calibrated</strong>
+              </div>
+            </div>
+
+            <div class="card kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-title">Station Trust Index</span>
+                <span class="kpi-icon">🛡️</span>
+              </div>
+              <div class="kpi-value-wrap">
+                <span class="kpi-value" id="kpiTrustIndex" style="color: var(--c-teal);">--%</span>
+                <span class="kpi-unit">QC Confidence</span>
+              </div>
+              <div class="kpi-foot">
+                <span>IMD QC Flag:</span>
+                <strong id="kpiQcFlag" style="font-size: 13px;">G</strong>
+                <span class="kpi-chip chip-normal" id="kpiQcChip">Validated</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero Grid: Map + Explainable AI (XAI) -->
+          <div class="dash-layout-grid">
+            <!-- Mini Network Map -->
+            <div class="card">
+              <div class="map-card-head">
+                <h3 class="card-title">
+                  <span>🗺️</span>
+                  <span>Spatial AWS Network & Buddy Check</span>
+                </h3>
+                <div class="map-legend">
+                  <span class="legend-item"><i class="legend-dot" style="background: var(--c-teal);"></i> Normal</span>
+                  <span class="legend-item"><i class="legend-dot" style="background: var(--c-amber);"></i> Watch</span>
+                  <span class="legend-item"><i class="legend-dot" style="background: var(--c-rose);"></i> Sensor Fault</span>
+                  <span class="legend-item"><i class="legend-dot" style="background: var(--c-purple);"></i> Real Storm</span>
+                </div>
+              </div>
+              <div id="miniLeafletMap" class="leaflet-container-box"></div>
+            </div>
+
+            <!-- Explainable AI (XAI) Inspector Card -->
+            <div class="card">
+              <div class="xai-header">
+                <div>
+                  <h3 class="card-title">
+                    <span>🧠</span>
+                    <span>Explainable AI (XAI) Inspector</span>
+                  </h3>
+                  <p style="font-size: 11.5px; color: var(--text-muted);">Real-Time Physics & Spatial Corroboration</p>
+                </div>
+                <span class="status-badge-lg chip-normal" id="xaiStatusBadge">🟢 NORMAL</span>
+              </div>
+
+              <!-- Real Event vs Sensor Fault Probabilities -->
+              <div class="probability-meters">
+                <div class="meter-box">
+                  <div class="meter-label">
+                    <span>Sensor Fault Risk</span>
+                    <strong id="meterFaultVal" style="color: var(--c-rose);">2%</strong>
+                  </div>
+                  <div class="progress-track">
+                    <div class="progress-fill fill-fault" id="meterFaultBar" style="width: 2%;"></div>
+                  </div>
+                </div>
+
+                <div class="meter-box">
+                  <div class="meter-label">
+                    <span>Real Extreme Event</span>
+                    <strong id="meterEventVal" style="color: var(--c-purple);">1%</strong>
+                  </div>
+                  <div class="progress-track">
+                    <div class="progress-fill fill-event" id="meterEventBar" style="width: 1%;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Human-Readable Reasons -->
+              <div class="reasons-title">AI Diagnostics & Physics Validation:</div>
+              <ul class="reasons-list" id="xaiReasonsList">
+                <li>All parameters satisfy Clausius-Clapeyron thermodynamic consistency.</li>
+                <li>Rate of change is within plausible atmospheric diffusion limits.</li>
+              </ul>
+
+              <!-- Virtual Sensor Imputation Box -->
+              <div class="impute-notice-box" id="imputeBox">
+                <strong>🛡️ Virtual Sensor Imputation Engine:</strong>
+                <span id="imputeText">Data stream is healthy; raw sensor readings directly ingested into NWP models.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Grid: Telemetry Rolling Chart + Real-Time Alerts -->
+          <div class="dash-grid-2">
+            <div class="card">
+              <div class="map-card-head">
+                <h3 class="card-title">
+                  <span>📈</span>
+                  <span>Temperature & Dew Point (Rolling History)</span>
+                </h3>
+              </div>
+              <div class="chart-container-wrap">
+                <canvas id="tempDewChart"></canvas>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="map-card-head">
+                <h3 class="card-title">
+                  <span>⚡</span>
+                  <span>Real-Time Anomaly & Event Alerts</span>
+                </h3>
+                <span class="kpi-chip chip-normal" id="alertCountBadge">Live Feed</span>
+              </div>
+              <div class="data-table-wrap" style="max-height: 280px; overflow-y: auto;">
+                <table class="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Station</th>
+                      <th>Status</th>
+                      <th>Severity</th>
+                      <th>Root Cause</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashAlertsTableBody">
+                    <tr>
+                      <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                        No critical alerts currently. Station network is operating nominally.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 2: SPATIAL NETWORK MAP -->
+        <section id="view-mapview" class="view-content">
+          <div class="card" style="margin-bottom: 20px;">
+            <div class="map-card-head">
+              <div>
+                <h2 style="font-size: 17px; font-weight: 700;">National AWS Network Topology & Spatial Buddy Links</h2>
+                <p style="font-size: 12.5px; color: var(--text-muted);">
+                  Click any station marker to inspect live telemetry, trust index, and peer spatial correlation.
+                  Dashed lines denote inter-station spatial buddy consensus links.
+                </p>
+              </div>
+              <div class="map-legend">
+                <span class="legend-item"><i class="legend-dot" style="background: var(--c-teal);"></i> Normal (Trust &gt; 90%)</span>
+                <span class="legend-item"><i class="legend-dot" style="background: var(--c-amber);"></i> Watch (70-90%)</span>
+                <span class="legend-item"><i class="legend-dot" style="background: var(--c-rose);"></i> Sensor Fault</span>
+                <span class="legend-item"><i class="legend-dot" style="background: var(--c-purple);"></i> Real Storm</span>
+              </div>
+            </div>
+            <div id="fullLeafletMap" class="leaflet-container-box full-map"></div>
+          </div>
+        </section>
+
+        <!-- VIEW 3: TELEMETRY & ANALYTICS -->
+        <section id="view-analytics" class="view-content">
+          <div class="dash-grid-2" style="margin-bottom: 20px;">
+            <div class="card">
+              <h3 class="card-title" style="margin-bottom: 14px;">
+                <span>📊</span>
+                <span>Multivariate Parameter Tracking (T / RH / P / Wind)</span>
+              </h3>
+              <div class="chart-container-tall">
+                <canvas id="multiParamChart"></canvas>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3 class="card-title" style="margin-bottom: 14px;">
+                <span>🛡️</span>
+                <span>Raw vs. Virtual Sensor Imputed Telemetry</span>
+              </h3>
+              <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+                When a sensor fault occurs, the AI reconstructs the true estimated value via spatial inverse-distance interpolation from operational peer stations.
+              </p>
+              <div class="chart-container-tall">
+                <canvas id="imputedCompareChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Peer Station Side-by-Side Comparison -->
+          <div class="card">
+            <div class="map-card-head">
+              <h3 class="card-title">
+                <span>🔄</span>
+                <span>Spatial Buddy Cross-Comparison</span>
+              </h3>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 12px; color: var(--text-muted);">Compare with:</span>
+                <select id="compareStationSelect" class="station-select" style="padding: 5px 28px 5px 10px; font-size: 12px;"></select>
+              </div>
+            </div>
+            <div class="chart-container-wrap">
+              <canvas id="buddyCompareChart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 4: SIMULATION & DEPT INGEST -->
+        <section id="view-simulation" class="view-content">
+          <!-- Interactive Fault Injection Bench -->
+          <div class="sim-bench-header">
+            <h2>🧪 Interactive AI Fault Injection Bench</h2>
+            <p>
+              Simulate hardware failures, environmental fouling, and genuine severe weather events on the active station stream to evaluate how the AURA AI pipeline detects, explains, and reconstructs the data.
+            </p>
+            <div class="fault-button-grid">
+              <button class="fault-btn" id="btnInjectSpike">
+                <span>⚡</span>
+                <span>55°C Heat Spike (Fault)</span>
+              </button>
+              <button class="fault-btn" id="btnFreezeSensor">
+                <span>🧊</span>
+                <span>Freeze Sensor (ADC Lock)</span>
+              </button>
+              <button class="fault-btn" id="btnInjectPressure">
+                <span>📉</span>
+                <span>Barometer Drop (Fault)</span>
+              </button>
+              <button class="fault-btn" id="btnInjectComms">
+                <span>📡</span>
+                <span>Comms Packet Dropout</span>
+              </button>
+              <button class="fault-btn" id="btnInjectDrift">
+                <span>〰️</span>
+                <span>Calibration Drift (+0.4°C/h)</span>
+              </button>
+              <button class="fault-btn fault-btn-storm" id="btnSimulateStorm">
+                <span>🌪️</span>
+                <span>Severe Storm (Real Event)</span>
+              </button>
+              <button class="fault-btn" id="btnClearFaults" style="border-color: var(--c-teal); color: var(--c-teal);">
+                <span>🔄</span>
+                <span>Reset to Nominal</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Department CSV Batch Ingestion Studio -->
+          <div class="card" style="margin-bottom: 22px;">
+            <h3 class="card-title" style="margin-bottom: 8px;">
+              <span>📁</span>
+              <span>Department Batch Ingestion & CSV Quality Auditor</span>
+            </h3>
+            <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 16px;">
+              Ingest historical or operational telemetry logs from state departments (IMD/MoES) in CSV format.
+              The AI engine evaluates every row, flags anomalies, calculates the Trust Index, and generates a downloadable audited dataset with imputed values.
+            </p>
+
+            <div class="ingest-dropzone" id="csvDropzone">
+              <div class="dropzone-icon">📥</div>
+              <div class="dropzone-text">
+                <h3>Drag & Drop Department CSV File Here</h3>
+                <p>Supports columns: Timestamp, Station_ID, Temperature, Humidity, Pressure, Wind, Rainfall</p>
+              </div>
+              <input type="file" id="csvFileInput" accept=".csv" style="display: none;" />
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+              <button class="btn btn-primary" id="loadSampleCsvBtn">
+                <span>📊</span>
+                <span>Load Sample Department Weather Log (40 Records with Injected Anomalies)</span>
+              </button>
+              <button class="btn btn-secondary" id="exportAuditedCsvBtn" style="display: none;">
+                <span>💾</span>
+                <span>Download Audited CSV with AI Flags</span>
+              </button>
+            </div>
+
+            <!-- Batch Audit Results Summary -->
+            <div id="batchSummaryArea" style="display: none;">
+              <div class="kpi-grid" style="margin-bottom: 16px;">
+                <div class="card kpi-card">
+                  <span class="kpi-title">Records Analyzed</span>
+                  <span class="kpi-value" id="batchTotalRows">0</span>
+                </div>
+                <div class="card kpi-card">
+                  <span class="kpi-title">Validated Normal</span>
+                  <span class="kpi-value" id="batchNormalCount" style="color: var(--c-teal);">0</span>
+                </div>
+                <div class="card kpi-card">
+                  <span class="kpi-title">Sensor Faults Detected</span>
+                  <span class="kpi-value" id="batchFaultCount" style="color: var(--c-rose);">0</span>
+                </div>
+                <div class="card kpi-card">
+                  <span class="kpi-title">Real Weather Events</span>
+                  <span class="kpi-value" id="batchEventCount" style="color: var(--c-purple);">0</span>
+                </div>
+                <div class="card kpi-card">
+                  <span class="kpi-title">Dataset Trust Index</span>
+                  <span class="kpi-value" id="batchMeanTrust" style="color: var(--c-sky);">0%</span>
+                </div>
+              </div>
+
+              <!-- Records Table -->
+              <div class="data-table-wrap" style="max-height: 380px; overflow-y: auto;">
+                <table class="custom-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Timestamp</th>
+                      <th>Station</th>
+                      <th>Temp (°C)</th>
+                      <th>RH (%)</th>
+                      <th>Pressure</th>
+                      <th>AI Status</th>
+                      <th>QC Flag</th>
+                      <th>Classification</th>
+                      <th>Imputed Temp</th>
+                    </tr>
+                  </thead>
+                  <tbody id="batchTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 5: SENSOR HEALTH & SOP -->
+        <section id="view-health" class="view-content">
+          <div class="card" style="margin-bottom: 22px;">
+            <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">
+              AWS Hardware Subsystem Diagnostics: <span id="healthStationTitle">Bengaluru IMD</span>
+            </h2>
+            <p style="font-size: 13px; color: var(--text-muted);">
+              Continuous transducer impedance, drift analysis, battery power, and calibration lifecycle tracking per WMO No. 8 specifications.
+            </p>
+          </div>
+
+          <div class="sensor-health-grid" id="sensorHealthGrid">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </section>
+
+        <!-- VIEW 6: QC AUDIT & REPORTS -->
+        <section id="view-audit" class="view-content">
+          <div class="card" style="margin-bottom: 22px;">
+            <div class="map-card-head">
+              <div>
+                <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">Official Disaster Management Quality Audit Report</h2>
+                <p style="font-size: 12.5px; color: var(--text-muted);">
+                  Compliant with Ministry of Earth Sciences (MoES) and WMO Quality Control standards.
+                </p>
+              </div>
+              <button class="btn btn-primary" id="printReportBtn">
+                <span>🖨️</span>
+                <span>Print / Save PDF Report</span>
+              </button>
+            </div>
+            
+            <div style="margin-top: 14px; font-size: 13.5px; line-height: 1.6; color: var(--text-secondary);" id="auditProseContent">
+              <!-- Report content populated via JS -->
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- AI COPILOT FLOATING DRAWER -->
+    <div class="ai-drawer-overlay" id="copilotOverlay"></div>
+    <aside class="ai-copilot-drawer" id="copilotDrawer">
+      <div class="copilot-header">
+        <div class="copilot-title">
+          <span>✨</span>
+          <span>AURA AI Weather Copilot</span>
+        </div>
+        <button class="btn-icon" id="closeCopilotBtn" style="border: none;">✕</button>
+      </div>
+
+      <div class="copilot-messages" id="copilotMessages"></div>
+
+      <div class="copilot-suggestions" id="copilotSuggestions"></div>
+
+      <form class="copilot-input-area" id="copilotForm">
+        <input
+          type="text"
+          id="copilotInput"
+          class="copilot-input"
+          placeholder="Ask about anomalies, physics, maintenance..."
+          autocomplete="off"
+        />
+        <button type="submit" class="btn btn-primary" style="padding: 8px 14px;">Send</button>
+      </form>
+    </aside>
+
+    <!-- TOASTS CONTAINER -->
+    <div class="toasts-container" id="toastsContainer"></div>
+
+    <!-- MAIN APP SCRIPT -->
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
