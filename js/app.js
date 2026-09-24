@@ -6,7 +6,7 @@
 
 import { STATIONS, getStationById } from "./stations.js";
 import { WeatherSimulator } from "./simulator.js";
-import { AiCopilot } from "./ai-copilot.js";
+import { AiCopilot, getActiveApiKey, setActiveApiKey } from "./ai-copilot.js";
 import { DepartmentDataIngest } from "./data-ingest.js";
 
 // Global instances
@@ -1239,6 +1239,17 @@ function initCopilotUI() {
   closeBtn?.addEventListener("click", closeDrawer);
   overlay?.addEventListener("click", closeDrawer);
 
+  const keyBtn = document.getElementById("copilotKeyBtn");
+  keyBtn?.addEventListener("click", () => {
+    const current = getActiveApiKey();
+    const masked = current ? `${current.slice(0, 7)}...${current.slice(-4)}` : "None";
+    const entered = window.prompt(`Google Gemini 2.5 Flash API Key:\nStatus: Active (${masked})\n\nEnter new key if you wish to override (stored in browser):`, current || "");
+    if (entered !== null && entered.trim()) {
+      setActiveApiKey(entered.trim());
+      showToast("Google Gemini API Key updated successfully!", "normal");
+    }
+  });
+
   form?.addEventListener("submit", (e) => {
     e.preventDefault();
     const q = input.value.trim();
@@ -1262,17 +1273,48 @@ function initCopilotUI() {
     });
   }
 
+  function formatMarkdown(raw) {
+    if (!raw) return "";
+
+    // 1. Code blocks ```lang\ncode\n```
+    let formatted = raw.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+      const cleanCode = code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return `<pre><code>${cleanCode}</code></pre>`;
+    });
+
+    // 2. Headers (###, ##, #)
+    formatted = formatted
+      .replace(/^### (.*$)/gim, '<h4>$1</h4>')
+      .replace(/^## (.*$)/gim, '<h4 style="font-size: 15px; color: #38bdf8;">$1</h4>')
+      .replace(/^# (.*$)/gim, '<h4 style="font-size: 16px; color: #38bdf8;">$1</h4>');
+
+    // 3. Blockquotes
+    formatted = formatted.replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>');
+
+    // 4. Bold & Italic
+    formatted = formatted
+      .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    // 5. Inline code
+    formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // 6. Bullet lists
+    formatted = formatted.replace(/^[\*\-•] (.*$)/gim, '<li>$1</li>');
+    formatted = formatted.replace(/(<li>.*<\/li>)/gims, '<ul>$1</ul>');
+    formatted = formatted.replace(/<\/ul>\s*<ul>/g, '');
+
+    // 7. Paragraph breaks
+    formatted = formatted.replace(/\n\n/g, '<br/><br/>').replace(/\n/g, '<br/>');
+
+    return formatted;
+  }
+
   function renderCopilotMessages() {
     if (!msgContainer) return;
     msgContainer.innerHTML = copilot.messages.map((m) => {
-      let formatted = m.text
-        .replace(/^### (.*$)/gim, '<h4 style="color: #38bdf8; margin: 8px 0 4px 0;">$1</h4>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code style="background: rgba(0,0,0,0.3); padding: 1px 5px; border-radius: 4px; font-family: monospace;">$1</code>')
-        .replace(/\n\n/g, '<br/><br/>')
-        .replace(/\n/g, '<br/>');
-
+      const formatted = formatMarkdown(m.text);
       return `
         <div class="chat-bubble ${m.sender}">
           <div>${formatted}</div>
@@ -1284,14 +1326,45 @@ function initCopilotUI() {
     msgContainer.scrollTop = msgContainer.scrollHeight;
   }
 
-  function sendCopilotQuery(text) {
+  async function sendCopilotQuery(text) {
     const context = {
       selectedStation: simulator?.stations?.[simulator?.selectedStationId],
       networkTrust: simulator?.calculateNetworkTrust(),
       stations: simulator?.stations
     };
 
-    copilot.processUserQuery(text, context);
+    // Render user message immediately
+    const userMsg = {
+      sender: "user",
+      text: text,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    };
+    copilot.messages.push(userMsg);
+    renderCopilotMessages();
+
+    // Show animated thinking bubble
+    const thinkingEl = document.createElement("div");
+    thinkingEl.className = "chat-bubble ai thinking";
+    thinkingEl.id = "copilotThinkingBubble";
+    thinkingEl.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span style="font-size: 12px; color: var(--c-sky); font-weight: 500;">Gemini 2.5 Flash is thinking...</span>
+      </div>
+    `;
+    msgContainer?.appendChild(thinkingEl);
+    if (msgContainer) msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    // Pop the temporary userMsg so processUserQuery doesn't duplicate it
+    copilot.messages.pop();
+
+    // Asynchronously query Google Gemini 2.5 Flash
+    await copilot.processUserQuery(text, context);
+
+    // Remove thinking bubble and re-render messages
+    document.getElementById("copilotThinkingBubble")?.remove();
     renderCopilotMessages();
   }
 }
