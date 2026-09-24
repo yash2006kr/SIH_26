@@ -70,6 +70,11 @@
             <span class="icon">🛠️</span>
             <span>Sensor Health & SOP</span>
           </button>
+          <button class="nav-item" data-view="disaster">
+            <span class="icon">🚨</span>
+            <span>Disaster Ops & Evac</span>
+            <span class="nav-badge" id="disasterNavBadge" style="background: var(--c-rose); color: #fff;">Early Warning</span>
+          </button>
           <button class="nav-item" data-view="audit">
             <span class="icon">📄</span>
             <span>QC Audit & Reports</span>
@@ -131,6 +136,18 @@
             </button>
           </div>
         </header>
+
+        <!-- EMERGENCY GLOBAL ALERT RIBBON -->
+        <div class="emergency-ribbon" id="emergencyRibbon" style="display: none;">
+          <div class="ribbon-content">
+            <span class="ribbon-siren">🚨</span>
+            <span class="ribbon-title">DISASTER EARLY WARNING ACTIVE:</span>
+            <span class="ribbon-message" id="ribbonMessage">High-risk precursor detected. Evacuation corridor standby.</span>
+          </div>
+          <button class="btn btn-danger btn-compact" id="ribbonViewBtn">
+            <span>🛡️ View Evacuation Route &amp; Dispatch Alert</span>
+          </button>
+        </div>
 
         <!-- VIEW 1: DASHBOARD -->
         <section id="view-dashboard" class="view-content active">
@@ -208,11 +225,19 @@
                   <span>🗺️</span>
                   <span>Spatial AWS Network &amp; Buddy Check</span>
                 </h3>
-                <div class="map-legend">
-                  <span class="legend-item"><i class="legend-dot" style="background: var(--c-teal);"></i> Normal</span>
-                  <span class="legend-item"><i class="legend-dot" style="background: var(--c-amber);"></i> Watch</span>
-                  <span class="legend-item"><i class="legend-dot" style="background: var(--c-rose);"></i> Sensor Fault</span>
-                  <span class="legend-item"><i class="legend-dot" style="background: var(--c-purple);"></i> Real Storm</span>
+                <div class="map-head-actions">
+                  <div class="map-layer-pills" id="miniMapLayerPills">
+                    <button class="layer-pill active" data-layer="satellite">🛰️ Satellite</button>
+                    <button class="layer-pill" data-layer="topo">⛰️ Topo</button>
+                    <button class="layer-pill" data-layer="street">🗺️ Street</button>
+                    <button class="layer-pill" data-layer="dark">🌑 Dark</button>
+                  </div>
+                  <div class="map-legend">
+                    <span class="legend-item"><i class="legend-dot" style="background: var(--c-teal);"></i> Normal</span>
+                    <span class="legend-item"><i class="legend-dot" style="background: var(--c-amber);"></i> Watch</span>
+                    <span class="legend-item"><i class="legend-dot" style="background: var(--c-rose);"></i> Fault</span>
+                    <span class="legend-item"><i class="legend-dot" style="background: var(--c-purple);"></i> Storm</span>
+                  </div>
                 </div>
               </div>
               <div id="miniLeafletMap" class="leaflet-container-box"></div>
@@ -323,14 +348,22 @@
                 <h2 style="font-size: 17px; font-weight: 700;">National AWS Network Topology &amp; Spatial Buddy Links</h2>
                 <p style="font-size: 12.5px; color: var(--text-muted);">
                   Click any station marker to inspect live telemetry, trust index, and peer spatial correlation.
-                  Dashed lines denote inter-station spatial buddy consensus links. Powered by Esri Dark Gray Basemaps (zero watermarks).
+                  Dashed lines denote inter-station spatial buddy consensus links. High-definition satellite &amp; terrain mapping.
                 </p>
               </div>
-              <div class="map-legend">
-                <span class="legend-item"><i class="legend-dot" style="background: var(--c-teal);"></i> Normal (Trust &gt; 90%)</span>
-                <span class="legend-item"><i class="legend-dot" style="background: var(--c-amber);"></i> Watch (70-90%)</span>
-                <span class="legend-item"><i class="legend-dot" style="background: var(--c-rose);"></i> Sensor Fault</span>
-                <span class="legend-item"><i class="legend-dot" style="background: var(--c-purple);"></i> Real Storm</span>
+              <div class="map-head-actions">
+                <div class="map-layer-pills" id="fullMapLayerPills">
+                  <button class="layer-pill active" data-layer="satellite">🛰️ Satellite HD</button>
+                  <button class="layer-pill" data-layer="topo">⛰️ Topo Detailed</button>
+                  <button class="layer-pill" data-layer="street">🗺️ Street</button>
+                  <button class="layer-pill" data-layer="dark">🌑 Dark</button>
+                </div>
+                <div class="map-legend">
+                  <span class="legend-item"><i class="legend-dot" style="background: var(--c-teal);"></i> Normal (Trust &gt; 90%)</span>
+                  <span class="legend-item"><i class="legend-dot" style="background: var(--c-amber);"></i> Watch (70-90%)</span>
+                  <span class="legend-item"><i class="legend-dot" style="background: var(--c-rose);"></i> Sensor Fault</span>
+                  <span class="legend-item"><i class="legend-dot" style="background: var(--c-purple);"></i> Real Storm</span>
+                </div>
               </div>
             </div>
             <div id="fullLeafletMap" class="leaflet-container-box full-map"></div>
@@ -601,7 +634,286 @@
           </div>
         </section>
 
-        <!-- VIEW 6: QC AUDIT & REPORTS -->
+        <!-- VIEW 6: DISASTER OPS & EVACUATION EARLY WARNING -->
+        <section id="view-disaster" class="view-content">
+          <!-- Alert Banner & Simulator Fast-Triggers -->
+          <div class="disaster-top-banner card">
+            <div class="disaster-banner-left">
+              <div class="disaster-threat-pill" id="disasterGlobalThreatPill">
+                <span class="threat-beacon"></span>
+                <span id="disasterGlobalThreatText">WATCH: PRECURSORY MONITORING ACTIVE</span>
+              </div>
+              <h2 style="font-size: 20px; font-weight: 700; margin-top: 6px;">
+                Predictive Disaster Early Warning &amp; Tactical Evacuation Operations
+              </h2>
+              <p style="font-size: 13px; color: var(--text-muted); max-width: 800px; margin-top: 4px;">
+                Multi-sensor thermodynamic anomaly analysis forecasts flash floods, mountain landslides, and cyclonic surges <strong>6 to 72 hours in advance</strong>.
+                Automates instant cell-broadcast emergency alerts to citizens &amp; emergency responders with turn-by-turn safest evacuation corridors.
+              </p>
+            </div>
+            <div class="disaster-banner-actions">
+              <span class="disaster-bench-label">Demo Scenario Triggers:</span>
+              <div class="disaster-trigger-group">
+                <button class="btn btn-danger btn-compact" id="triggerLandslideBtn" title="Inject severe mountain rain & pressure plunge into Western Ghats">
+                  ⛰️ Landslide (Sakleshpur)
+                </button>
+                <button class="btn btn-warning btn-compact" id="triggerFloodBtn" title="Inject torrential monsoon rainfall accumulation">
+                  🌊 Flood (Mumbai Coast)
+                </button>
+                <button class="btn btn-secondary btn-compact" id="triggerCycloneBtn" title="Inject deep cyclonic low pressure & gale winds">
+                  🌀 Cyclone (Odisha Coast)
+                </button>
+                <button class="btn btn-secondary btn-compact" id="resetDisasterBtn" title="Reset all stations to nominal weather">
+                  🔄 Clear Precursors
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Disaster KPI Metrics Row -->
+          <div class="kpi-grid disaster-kpi-grid">
+            <div class="card kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-title">Active Threat Level</span>
+                <span class="kpi-icon">🚨</span>
+              </div>
+              <div class="kpi-value-wrap">
+                <span class="kpi-value" id="disasterKpiLevel" style="color: var(--c-amber); font-size: 26px;">MODERATE</span>
+              </div>
+              <span class="kpi-sub" id="disasterKpiHazard">Hazard: Landslide &amp; Mountain Runoff</span>
+            </div>
+
+            <div class="card kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-title">Projected Impact Window</span>
+                <span class="kpi-icon">⏳</span>
+              </div>
+              <div class="kpi-value-wrap">
+                <span class="kpi-value" id="disasterKpiLeadTime" style="color: var(--c-sky); font-size: 26px;">12 - 24 Hrs</span>
+              </div>
+              <span class="kpi-sub" id="disasterKpiConfidence">Detection Confidence: 86%</span>
+            </div>
+
+            <div class="card kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-title">Population in Warning Zone</span>
+                <span class="kpi-icon">👥</span>
+              </div>
+              <div class="kpi-value-wrap">
+                <span class="kpi-value" id="disasterKpiPop" style="color: var(--c-rose); font-size: 26px;">~52,000</span>
+              </div>
+              <span class="kpi-sub" id="disasterKpiRadius">Buffer Perimeter: 15 km Radius</span>
+            </div>
+
+            <div class="card kpi-card">
+              <div class="kpi-top">
+                <span class="kpi-title">Evacuation Corridor Status</span>
+                <span class="kpi-icon">🛡️</span>
+              </div>
+              <div class="kpi-value-wrap">
+                <span class="kpi-value" id="disasterKpiCorridor" style="color: var(--c-teal); font-size: 26px;">ACTIVE</span>
+              </div>
+              <span class="kpi-sub" id="disasterKpiSafeZone">Safe Haven: Sakleshpur Ridge Campus</span>
+            </div>
+          </div>
+
+          <!-- Main Disaster 2-Column Grid -->
+          <div class="disaster-ops-grid">
+            <!-- LEFT COLUMN: Predictive Matrix & Emergency Alert Broadcast -->
+            <div class="disaster-ops-left">
+              <!-- Card 1: Multi-Station Predictive Hazard Feed -->
+              <div class="card" style="margin-bottom: 20px;">
+                <div class="card-head-row">
+                  <div>
+                    <h3 style="font-size: 16px; font-weight: 700;">Multi-Station Predictive Hazard Matrix</h3>
+                    <p style="font-size: 12px; color: var(--text-muted);">
+                      Continuous AI trend surveillance across barometric drop rate, rain velocity, and terrain saturation.
+                    </p>
+                  </div>
+                  <div class="channel-filter-pills" id="disasterTypePills">
+                    <button class="channel-pill active" data-hazard="all">All</button>
+                    <button class="channel-pill" data-hazard="LANDSLIDE">⛰️ Landslide</button>
+                    <button class="channel-pill" data-hazard="FLOOD">🌊 Flood</button>
+                    <button class="channel-pill" data-hazard="CYCLONE">🌀 Cyclone</button>
+                  </div>
+                </div>
+
+                <div class="table-wrap" style="max-height: 290px; overflow-y: auto;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Station</th>
+                        <th>Predicted Hazard</th>
+                        <th>Risk Level</th>
+                        <th>Impact Window</th>
+                        <th>Precursor Signals</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="disasterTableBody">
+                      <!-- Populated via JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Card 2: Multi-Agency Emergency Alert & Cell Broadcast Dispatcher -->
+              <div class="card disaster-alert-dispatch-card">
+                <div class="card-head-row">
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="status-indicator-live"></span>
+                      <h3 style="font-size: 16px; font-weight: 700;">Multi-Agency Emergency Alert &amp; Cell Broadcast Dispatcher</h3>
+                    </div>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 3px;">
+                      Simulates instant multi-channel alert dispatch to emergency responders &amp; public SMS broadcast in the hazard zone.
+                    </p>
+                  </div>
+                  <button class="btn btn-danger" id="dispatchAlertBtn">
+                    <span>⚡</span>
+                    <span>DISPATCH EMERGENCY ALERT NOW</span>
+                  </button>
+                </div>
+
+                <!-- Agency Target Status Badges -->
+                <div class="dispatch-agencies-grid">
+                  <div class="agency-badge-card" id="agencyPoliceCard">
+                    <div class="agency-icon">🚓</div>
+                    <div class="agency-info">
+                      <strong>District Police HQ (112)</strong>
+                      <span class="agency-status" id="policeStatus">STANDBY</span>
+                    </div>
+                  </div>
+                  <div class="agency-badge-card" id="agencySdmaCard">
+                    <div class="agency-icon">🏛️</div>
+                    <div class="agency-info">
+                      <strong>State Disaster Dept (1070)</strong>
+                      <span class="agency-status" id="sdmaStatus">STANDBY</span>
+                    </div>
+                  </div>
+                  <div class="agency-badge-card" id="agencyNdrfCard">
+                    <div class="agency-icon">🪖</div>
+                    <div class="agency-info">
+                      <strong>NDRF Battalion Command</strong>
+                      <span class="agency-status" id="ndrfStatus">STANDBY</span>
+                    </div>
+                  </div>
+                  <div class="agency-badge-card" id="agencyHospitalCard">
+                    <div class="agency-icon">🏥</div>
+                    <div class="agency-info">
+                      <strong>District Trauma Hospital</strong>
+                      <span class="agency-status" id="hospitalStatus">STANDBY</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- SMS Cell Broadcast Simulation Preview -->
+                <div class="sms-broadcast-box">
+                  <div class="sms-box-header">
+                    <span class="sms-type-badge">📲 GOVT EMERGENCY CELL BROADCAST (CHANNEL 4370)</span>
+                    <span class="sms-target-meta" id="smsTargetMeta">Estimated Citizens: 52,400 Handsets in Perimeter</span>
+                  </div>
+                  <div class="sms-box-body" id="smsBroadcastText">
+                    🚨 EMERGENCY ALERT [NDMA / SDMA]: Severe Landslide and Flash Flood precursor detected in Sakleshpur/Hassan region within next 12 hours. Immediate evacuation ordered. Follow NH-75 Highland Bypass to Sakleshpur Ridge Safe Haven. Stay away from riverbeds and cliff edges. Call 112 for rescue.
+                  </div>
+                  <div class="sms-box-footer">
+                    <div class="sms-progress-bar-wrap">
+                      <div class="sms-progress-bar" id="smsProgressBar" style="width: 0%;"></div>
+                    </div>
+                    <div class="sms-status-line">
+                      <span id="smsDeliveryStatus">Ready for instant dispatch</span>
+                      <span id="smsTimestamp">Last Broadcast: Never</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Dispatch Wire Log -->
+                <div class="dispatch-log-wrap">
+                  <div class="dispatch-log-title">Official Emergency Dispatch Wire Log:</div>
+                  <div class="dispatch-log-content" id="dispatchLogContent">
+                    <div class="log-entry neutral">[SYSTEM] SkyGuard AI Early Warning Engine initialized. Continuous telemetry ingestion active.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Tactical Evacuation Map & Safe Route Guide -->
+            <div class="disaster-ops-right">
+              <div class="card" style="height: 100%; display: flex; flex-direction: column;">
+                <div class="map-card-head">
+                  <div>
+                    <h3 style="font-size: 16px; font-weight: 700;">Tactical Evacuation Routing &amp; Highland Safe Zones</h3>
+                    <p style="font-size: 12px; color: var(--text-muted);">
+                      Shortest safe evacuation path dynamically calculated to avoid river floodplains, unstable slopes, and submerged underpasses.
+                    </p>
+                  </div>
+                  <!-- Map Layer Switcher for High Quality -->
+                  <div class="map-layer-pills" id="evacMapLayerPills">
+                    <button class="layer-pill active" data-layer="satellite">🛰️ Satellite HD</button>
+                    <button class="layer-pill" data-layer="topo">⛰️ Topo Detailed</button>
+                    <button class="layer-pill" data-layer="street">🗺️ Street</button>
+                    <button class="layer-pill" data-layer="dark">🌑 Dark</button>
+                  </div>
+                </div>
+
+                <!-- Interactive Leaflet Evacuation Map Container -->
+                <div id="evacLeafletMap" class="leaflet-container-box evac-map-box"></div>
+
+                <!-- Evacuation Corridor & Shelter Logistics Card -->
+                <div class="evac-logistics-panel" id="evacLogisticsPanel">
+                  <div class="evac-meta-grid">
+                    <div class="evac-meta-card">
+                      <span class="meta-label">Designated Safe Haven</span>
+                      <strong id="evacSafeName" style="color: var(--c-teal); font-size: 14px;">Sakleshpur Highland Relief Center</strong>
+                      <small id="evacSafeElev" style="color: var(--text-muted);">Elevation: 995m MSL (+232m safety gain)</small>
+                    </div>
+                    <div class="evac-meta-card">
+                      <span class="meta-label">Corridor Distance &amp; ETA</span>
+                      <strong id="evacDistanceEta" style="color: var(--c-sky); font-size: 14px;">14.2 km &bull; ~28 mins transit</strong>
+                      <small id="evacCorridorName" style="color: var(--text-muted);">Via NH-75 Western Ridge Elevated Bypass</small>
+                    </div>
+                    <div class="evac-meta-card">
+                      <span class="meta-label">Shelter Capacity</span>
+                      <strong id="evacCapacity" style="color: var(--c-amber); font-size: 14px;">6,500 Persons</strong>
+                      <small style="color: var(--text-muted);">Food, Medical Triage &amp; Power Generator Ready</small>
+                    </div>
+                  </div>
+
+                  <!-- Hazards Avoided along Route -->
+                  <div class="evac-avoidance-box">
+                    <span class="avoid-title">⚠️ Hazard Obstacles Explicitly Bypassed by AI Route:</span>
+                    <ul class="avoid-list" id="evacAvoidList">
+                      <li>Hemavathi River basin &amp; potential flash flood depression</li>
+                      <li>Donigal unstable cliff face &amp; active rockfall corridor</li>
+                      <li>Marannahalli ghat hairpin low-visibility sector</li>
+                    </ul>
+                  </div>
+
+                  <!-- Emergency Direct Call Bar -->
+                  <div class="emergency-call-bar">
+                    <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Direct Emergency Response Hotlines:</span>
+                    <div class="hotline-btn-group">
+                      <button class="btn btn-outline btn-compact" id="callPoliceBtn" title="Call District Police">
+                        📞 Police: <span id="callPoliceNum">112</span>
+                      </button>
+                      <button class="btn btn-outline btn-compact" id="callSdmaBtn" title="Call State Disaster Authority">
+                        🏛️ SDMA: <span id="callSdmaNum">1070</span>
+                      </button>
+                      <button class="btn btn-outline btn-compact" id="callNdrfBtn" title="Call NDRF Quick Response">
+                        🪖 NDRF: <span id="callNdrfNum">080-22253200</span>
+                      </button>
+                      <button class="btn btn-outline btn-compact" id="callAmbulanceBtn" title="Call Medical Ambulance">
+                        🚑 Ambulance: <span id="callAmbulanceNum">108</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 7: QC AUDIT & REPORTS -->
         <section id="view-audit" class="view-content">
           <div class="audit-page-header">
             <div>

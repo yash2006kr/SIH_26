@@ -410,3 +410,167 @@ export function analyzeObservation(station, currentReading, history = [], neighb
     sensorHealth
   };
 }
+
+/* =====================================================
+   PREDICTIVE DISASTER RISK ASSESSMENT ENGINE
+   Analyzes multi-parameter telemetry trends to forecast
+   flood / landslide / cyclone / heatwave risk 24-72h ahead.
+   ===================================================== */
+export function assessDisasterRisk(station, history = []) {
+  if (!station || history.length < 3) {
+    return { riskType: "NONE", riskLevel: "LOW", hoursToImpact: null, confidence: 10, factors: [], score: 0 };
+  }
+
+  const recent = history.slice(-20);  // Last 20 ticks (~1 hour of data)
+  const older  = history.slice(-60, -20); // Prior period for trend comparison
+
+  const avgRain   = (arr) => arr.reduce((s, r) => s + (r.rain || 0), 0) / Math.max(1, arr.length);
+  const avgTemp   = (arr) => arr.reduce((s, r) => s + (r.t || 0), 0) / Math.max(1, arr.length);
+  const avgHum    = (arr) => arr.reduce((s, r) => s + (r.h || 0), 0) / Math.max(1, arr.length);
+  const avgPres   = (arr) => arr.reduce((s, r) => s + (r.p || 0), 0) / Math.max(1, arr.length);
+  const avgWind   = (arr) => arr.reduce((s, r) => s + (r.wind || 0), 0) / Math.max(1, arr.length);
+
+  const recentRain = avgRain(recent);
+  const recentTemp = avgTemp(recent);
+  const recentHum  = avgHum(recent);
+  const recentPres = avgPres(recent);
+  const recentWind = avgWind(recent);
+
+  const olderPres  = older.length > 0 ? avgPres(older) : recentPres;
+  const olderRain  = older.length > 0 ? avgRain(older) : 0;
+  const olderTemp  = older.length > 0 ? avgTemp(older) : recentTemp;
+
+  const pressDrop  = olderPres - recentPres;   // positive = pressure falling
+  const rainTrend  = recentRain - olderRain;    // positive = rain accelerating
+  const tempTrend  = recentTemp - olderTemp;    // positive = warming
+
+  const elev = station.elevation || 0;
+  const isCoastal  = ["BOM-01","MAA-01","MAA-AP","COK-01","BBI-01","CCU-01"].includes(station.id);
+  const isHighElev = elev > 500;
+
+  let scores = { FLOOD: 0, LANDSLIDE: 0, CYCLONE: 0, HEATWAVE: 0 };
+  let factors = { FLOOD: [], LANDSLIDE: [], CYCLONE: [], HEATWAVE: [] };
+
+  // ─── FLOOD PRECURSORS ────────────────────────────────────────────────
+  if (recentRain > 8) {
+    scores.FLOOD += 30;
+    factors.FLOOD.push(`High rainfall rate: ${recentRain.toFixed(1)} mm/tick`);
+  }
+  if (rainTrend > 3) {
+    scores.FLOOD += 25;
+    factors.FLOOD.push(`Accelerating rainfall trend (+${rainTrend.toFixed(1)} mm/tick)`);
+  }
+  if (recentHum > 88) {
+    scores.FLOOD += 15;
+    factors.FLOOD.push(`Near-saturation humidity: ${recentHum.toFixed(0)}%`);
+  }
+  if (pressDrop > 2) {
+    scores.FLOOD += 15;
+    factors.FLOOD.push(`Falling pressure: -${pressDrop.toFixed(1)} hPa (deepening low)`);
+  }
+  if (recentPres < 1005) {
+    scores.FLOOD += 10;
+    factors.FLOOD.push(`Below-normal pressure: ${recentPres.toFixed(1)} hPa`);
+  }
+  // River-flood-prone low-elevation stations
+  if (elev < 100) {
+    scores.FLOOD += 5;
+    factors.FLOOD.push(`Low-lying station (${elev}m MSL) — flash flood susceptible`);
+  }
+
+  // ─── LANDSLIDE PRECURSORS ─────────────────────────────────────────────
+  if (isHighElev && recentRain > 10) {
+    scores.LANDSLIDE += 35;
+    factors.LANDSLIDE.push(`High-elevation station (${elev}m) with heavy rain: ${recentRain.toFixed(1)} mm/tick`);
+  }
+  if (isHighElev && recentHum > 90) {
+    scores.LANDSLIDE += 20;
+    factors.LANDSLIDE.push(`Saturated hillside soil conditions (RH: ${recentHum.toFixed(0)}%)`);
+  }
+  if (rainTrend > 5 && isHighElev) {
+    scores.LANDSLIDE += 25;
+    factors.LANDSLIDE.push(`Rapid intensification on slopes (+${rainTrend.toFixed(1)} mm/tick)`);
+  }
+  if (recentWind > 40 && isHighElev) {
+    scores.LANDSLIDE += 10;
+    factors.LANDSLIDE.push(`Strong surface winds on terrain (${recentWind.toFixed(0)} km/h)`);
+  }
+  if (pressDrop > 4 && isHighElev) {
+    scores.LANDSLIDE += 10;
+    factors.LANDSLIDE.push(`Rapid pressure fall (-${pressDrop.toFixed(1)} hPa) — orographic instability`);
+  }
+
+  // ─── CYCLONE PRECURSORS ───────────────────────────────────────────────
+  if (isCoastal && recentWind > 55) {
+    scores.CYCLONE += 40;
+    factors.CYCLONE.push(`Sustained high winds at coastal station: ${recentWind.toFixed(0)} km/h`);
+  }
+  if (isCoastal && recentPres < 1000) {
+    scores.CYCLONE += 35;
+    factors.CYCLONE.push(`Critically low pressure at coast: ${recentPres.toFixed(1)} hPa`);
+  }
+  if (isCoastal && pressDrop > 6) {
+    scores.CYCLONE += 25;
+    factors.CYCLONE.push(`Rapid cyclogenesis — pressure drop: -${pressDrop.toFixed(1)} hPa`);
+  }
+  if (isCoastal && recentHum > 85 && recentWind > 35) {
+    scores.CYCLONE += 15;
+    factors.CYCLONE.push(`Warm moist inflow pattern (RH: ${recentHum.toFixed(0)}%, Wind: ${recentWind.toFixed(0)} km/h)`);
+  }
+
+  // ─── HEATWAVE PRECURSORS ──────────────────────────────────────────────
+  if (recentTemp > 40) {
+    scores.HEATWAVE += 40;
+    factors.HEATWAVE.push(`Extreme temperature: ${recentTemp.toFixed(1)}°C`);
+  }
+  if (recentTemp > 38 && recentHum < 30) {
+    scores.HEATWAVE += 30;
+    factors.HEATWAVE.push(`Dry heat conditions (T: ${recentTemp.toFixed(1)}°C, RH: ${recentHum.toFixed(0)}%)`);
+  }
+  if (tempTrend > 4) {
+    scores.HEATWAVE += 20;
+    factors.HEATWAVE.push(`Rising temperature trend: +${tempTrend.toFixed(1)}°C`);
+  }
+  if (pressDrop < -3) {
+    scores.HEATWAVE += 10;
+    factors.HEATWAVE.push(`Building high pressure — heat dome forming`);
+  }
+
+  // ─── Pick dominant risk type ──────────────────────────────────────────
+  const maxScore = Math.max(...Object.values(scores));
+  const dominant = maxScore < 10 ? "NONE" : Object.entries(scores).find(([, v]) => v === maxScore)[0];
+
+  if (dominant === "NONE") {
+    return { riskType: "NONE", riskLevel: "LOW", hoursToImpact: null, confidence: 5, factors: [], score: 0 };
+  }
+
+  const domScore = scores[dominant];
+  let riskLevel = "LOW";
+  let hoursToImpact = null;
+  let confidence = Math.min(95, Math.round(domScore * 1.2));
+
+  if (domScore >= 70) {
+    riskLevel = "CRITICAL";
+    hoursToImpact = Math.round(6 + Math.random() * 12);
+  } else if (domScore >= 45) {
+    riskLevel = "HIGH";
+    hoursToImpact = Math.round(12 + Math.random() * 24);
+  } else if (domScore >= 25) {
+    riskLevel = "MODERATE";
+    hoursToImpact = Math.round(24 + Math.random() * 24);
+  } else {
+    riskLevel = "LOW";
+    hoursToImpact = Math.round(48 + Math.random() * 24);
+    confidence = Math.min(40, confidence);
+  }
+
+  return {
+    riskType: dominant,           // "FLOOD" | "LANDSLIDE" | "CYCLONE" | "HEATWAVE" | "NONE"
+    riskLevel,                    // "LOW" | "MODERATE" | "HIGH" | "CRITICAL"
+    hoursToImpact,                // estimated hours until impact
+    confidence,                   // 0-95%
+    factors: factors[dominant],   // string[] of contributing signals
+    score: domScore,              // raw composite score
+    allScores: scores             // scores for all hazard types
+  };
+}

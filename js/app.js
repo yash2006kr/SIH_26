@@ -4,10 +4,11 @@
  * Team AI Avengers
  */
 
-import { STATIONS, getStationById } from "./stations.js";
+import { STATIONS, getStationById, getEvacuationPlan, EVACUATION_PLANS } from "./stations.js";
 import { WeatherSimulator } from "./simulator.js";
 import { AiCopilot, getActiveApiKey, setActiveApiKey } from "./ai-copilot.js";
 import { DepartmentDataIngest } from "./data-ingest.js";
+import { assessDisasterRisk } from "./ai-engine.js";
 
 // Global instances
 let simulator;
@@ -22,15 +23,23 @@ let imputedCompareChart = null;
 let buddyCompareChart = null;
 let sensorRadarChart = null;
 
-// Leaflet map references
+// Leaflet map references & layer management
 let miniMap = null;
 let fullMap = null;
+let evacMap = null;
 let miniMarkers = {};
 let fullMarkers = {};
 let fullPolylines = [];
 let miniPolylines = [];
 let miniTileLayers = [];
 let fullTileLayers = [];
+let evacTileLayers = [];
+let evacLayersGroup = null;
+
+// High quality map layer state
+let currentMapLayer = "satellite"; // High-Res Satellite as default
+let activeEvacStationId = "HSN-01"; // Default to landslide-prone Sakleshpur
+let activeDisasterHazardFilter = "all";
 
 // DOM ready initialization
 document.addEventListener("DOMContentLoaded", () => {
@@ -47,6 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initMaps();
   initCharts();
   initAnalyticsControls();
+  initDisasterOpsUI();
 
   // Initialize and start Simulator
   simulator = new WeatherSimulator((state) => {
@@ -170,6 +180,7 @@ function initNavigation() {
     analytics: "Multi-Sensor Telemetry & Imputation Analytics",
     simulation: "Department Ingest & Simulation Lab",
     health: "Hardware Sensor Health & Predictive SOP",
+    disaster: "AI Disaster Precursor Early Warning & Tactical Evacuation Operations",
     audit: "Government Meteorological QC Audit Dossier"
   };
 
@@ -194,8 +205,18 @@ function initNavigation() {
       setTimeout(() => {
         if (miniMap) miniMap.invalidateSize();
         if (fullMap) fullMap.invalidateSize();
+        if (evacMap) {
+          evacMap.invalidateSize();
+          renderEvacuationRoute(activeEvacStationId);
+        }
       }, 150);
     });
+  });
+
+  // Global Emergency Ribbon Action
+  document.getElementById("ribbonViewBtn")?.addEventListener("click", () => {
+    const disasterNav = document.querySelector('.nav-item[data-view="disaster"]');
+    disasterNav?.click();
   });
 }
 
@@ -262,9 +283,39 @@ function initStationPickers() {
 }
 
 /* ----------------------------------------------------
-   LEAFLET MAPS (ESRI GRAY CANVAS - ZERO WATERMARKS!)
+   LEAFLET HIGH-DEFINITION MAP ENGINE
+   Satellite Imagery + Detailed Topography + Multi-Layer Switching
    ---------------------------------------------------- */
-function getMapTileConfigs(theme) {
+function getMapTileConfigs(layerKey = currentMapLayer, theme = "dark") {
+  if (layerKey === "satellite") {
+    return [
+      {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        options: { maxZoom: 19, attribution: "Esri, Maxar, Earthstar Geographics" }
+      },
+      {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+        options: { maxZoom: 19 }
+      }
+    ];
+  }
+  if (layerKey === "topo") {
+    return [
+      {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+        options: { maxZoom: 18, attribution: "Esri, DeLorme, NAVTEQ, TomTom" }
+      }
+    ];
+  }
+  if (layerKey === "street") {
+    return [
+      {
+        url: "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+        options: { maxZoom: 19, subdomains: "abcd", attribution: "&copy; OpenStreetMap, &copy; CARTO" }
+      }
+    ];
+  }
+  // Fallback dark / light canvas
   if (theme === "light") {
     return [
       {
@@ -291,9 +342,9 @@ function getMapTileConfigs(theme) {
 
 function initMaps() {
   const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
-  const tileConfigs = getMapTileConfigs(currentTheme);
+  const tileConfigs = getMapTileConfigs(currentMapLayer, currentTheme);
 
-  // Mini Map (Dashboard)
+  // 1. Mini Map (Dashboard)
   const miniEl = document.getElementById("miniLeafletMap");
   if (miniEl) {
     miniMap = L.map("miniLeafletMap", {
@@ -302,11 +353,10 @@ function initMaps() {
       zoomControl: false,
       attributionControl: false
     });
-
     miniTileLayers = tileConfigs.map((cfg) => L.tileLayer(cfg.url, cfg.options).addTo(miniMap));
   }
 
-  // Full Network Map
+  // 2. Full Network Map
   const fullEl = document.getElementById("fullLeafletMap");
   if (fullEl) {
     fullMap = L.map("fullLeafletMap", {
@@ -315,23 +365,84 @@ function initMaps() {
       zoomControl: true,
       attributionControl: false
     });
-
     fullTileLayers = tileConfigs.map((cfg) => L.tileLayer(cfg.url, cfg.options).addTo(fullMap));
   }
 
+  // 3. Tactical Evacuation & Safe Zone Map
+  const evacEl = document.getElementById("evacLeafletMap");
+  if (evacEl) {
+    evacMap = L.map("evacLeafletMap", {
+      center: [13.0033, 76.1004], // Western Ghats Hassan
+      zoom: 11,
+      zoomControl: true,
+      attributionControl: false
+    });
+    evacTileLayers = tileConfigs.map((cfg) => L.tileLayer(cfg.url, cfg.options).addTo(evacMap));
+    evacLayersGroup = L.layerGroup().addTo(evacMap);
+  }
+
+  initMapLayerPills();
   renderStationMarkers();
 }
 
-function updateMapTiles(theme) {
-  const tileConfigs = getMapTileConfigs(theme);
+function initMapLayerPills() {
+  const allLayerPillContainers = ["miniMapLayerPills", "fullMapLayerPills", "evacMapLayerPills"];
+  allLayerPillContainers.forEach((containerId) => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const buttons = container.querySelectorAll(".layer-pill");
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const layerKey = btn.getAttribute("data-layer");
+        switchMapLayer(layerKey);
+      });
+    });
+  });
+}
+
+function switchMapLayer(layerKey) {
+  currentMapLayer = layerKey;
+  const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
+  const tileConfigs = getMapTileConfigs(layerKey, currentTheme);
+
+  // Update Mini Map
   if (miniMap) {
     miniTileLayers.forEach((l) => miniMap.removeLayer(l));
     miniTileLayers = tileConfigs.map((cfg) => L.tileLayer(cfg.url, cfg.options).addTo(miniMap));
   }
+
+  // Update Full Map
   if (fullMap) {
     fullTileLayers.forEach((l) => fullMap.removeLayer(l));
     fullTileLayers = tileConfigs.map((cfg) => L.tileLayer(cfg.url, cfg.options).addTo(fullMap));
   }
+
+  // Update Evacuation Map
+  if (evacMap) {
+    evacTileLayers.forEach((l) => evacMap.removeLayer(l));
+    evacTileLayers = tileConfigs.map((cfg) => L.tileLayer(cfg.url, cfg.options).addTo(evacMap));
+  }
+
+  // Sync all layer switcher button active states
+  document.querySelectorAll(".layer-pill").forEach((b) => {
+    b.classList.toggle("active", b.getAttribute("data-layer") === layerKey);
+  });
+
+  const layerNames = {
+    satellite: "Photorealistic Satellite HD",
+    topo: "Detailed Topographic Contours",
+    street: "High-DPI Street & Roadways",
+    dark: "Night Ops Tactical Dark"
+  };
+  showToast(`Map quality switched to: ${layerNames[layerKey] || layerKey}`);
+}
+
+function updateMapTiles(theme) {
+  if (currentMapLayer === "satellite" || currentMapLayer === "topo" || currentMapLayer === "street") {
+    // Keep user's chosen HD layer regardless of light/dark toggle
+    return;
+  }
+  switchMapLayer(theme === "light" ? "light" : "dark");
 }
 
 function getStatusColor(status) {
@@ -862,6 +973,9 @@ function updateUI(state) {
 
   // Update Official Government Audit Report Dossier
   renderOfficialDossier(state);
+
+  // Update Disaster Ops Matrix & Early Warning
+  updateDisasterOps(state);
 }
 
 function updateAlertsFeed(alerts) {
@@ -1390,4 +1504,486 @@ function showToast(message, type = "normal") {
     toast.style.transition = "all 0.3s ease";
     setTimeout(() => toast.remove(), 300);
   }, 4000);
+}
+
+/* ====================================================
+   DISASTER OPS & TACTICAL EVACUATION CONTROLLER
+   Predictive Anomaly Early Warning + Multi-Agency Alert
+   ==================================================== */
+let lastEvaluatedReports = [];
+
+function initDisasterOpsUI() {
+  // 1. Hazard Filter Pills
+  const hazardPills = document.querySelectorAll("#disasterTypePills .channel-pill");
+  hazardPills.forEach((p) => {
+    p.addEventListener("click", () => {
+      hazardPills.forEach((b) => b.classList.remove("active"));
+      p.classList.add("active");
+      activeDisasterHazardFilter = p.getAttribute("data-hazard");
+      renderDisasterTable(lastEvaluatedReports);
+    });
+  });
+
+  // 2. Emergency Broadcast Dispatch Button
+  document.getElementById("dispatchAlertBtn")?.addEventListener("click", () => {
+    dispatchEmergencyBroadcast(activeEvacStationId);
+  });
+
+  // 3. Demo Scenario Fast-Triggers
+  document.getElementById("triggerLandslideBtn")?.addEventListener("click", () => {
+    injectDisasterScenario("HSN-01", "LANDSLIDE");
+  });
+
+  document.getElementById("triggerFloodBtn")?.addEventListener("click", () => {
+    injectDisasterScenario("BOM-01", "FLOOD");
+  });
+
+  document.getElementById("triggerCycloneBtn")?.addEventListener("click", () => {
+    injectDisasterScenario("BBI-01", "CYCLONE");
+  });
+
+  document.getElementById("resetDisasterBtn")?.addEventListener("click", () => {
+    resetAllDisasterScenarios();
+  });
+
+  // 4. Hotline Quick Dials
+  const hotlineButtons = [
+    { id: "callPoliceBtn", name: "District Police Control Room 112" },
+    { id: "callSdmaBtn", name: "State Disaster Management Cell 1070" },
+    { id: "callNdrfBtn", name: "NDRF Battalion Quick Response" },
+    { id: "callAmbulanceBtn", name: "Emergency Trauma Ambulance 108" }
+  ];
+  hotlineButtons.forEach(({ id, name }) => {
+    document.getElementById(id)?.addEventListener("click", () => {
+      showToast(`📞 Direct Wire Connected: ${name}`, "event");
+    });
+  });
+}
+
+function injectDisasterScenario(stationId, type) {
+  activeEvacStationId = stationId;
+  const stData = simulator?.stations?.[stationId];
+  if (!stData) return;
+
+  const now = Date.now();
+  if (!stData.history) stData.history = [];
+
+  if (type === "LANDSLIDE") {
+    // Inject severe mountain cloudburst + falling pressure + saturated soil
+    for (let i = 15; i >= 0; i--) {
+      stData.history.push({
+        t: 21.5 - (15 - i) * 0.2,
+        h: Math.min(100, 92 + (15 - i) * 0.5),
+        p: 998.0 - (15 - i) * 0.5,
+        wind: 38 + (15 - i) * 1.5,
+        rain: 12 + (15 - i) * 1.2,
+        ts: now - i * 60000
+      });
+    }
+    stData.latest = {
+      t: 18.8,
+      h: 98,
+      p: 990.2,
+      wind: 56.4,
+      rain: 28.5,
+      ts: now
+    };
+    showToast("⚠️ SIMULATION: Sakleshpur Landslide Precursor Injected (Heavy rain & pressure plunge)", "fault");
+  } else if (type === "FLOOD") {
+    // Inject torrential coastal cloudburst & deep low
+    for (let i = 15; i >= 0; i--) {
+      stData.history.push({
+        t: 26.0 - (15 - i) * 0.1,
+        h: Math.min(100, 94 + (15 - i) * 0.4),
+        p: 1004.0 - (15 - i) * 0.4,
+        wind: 32 + (15 - i) * 1.1,
+        rain: 18 + (15 - i) * 1.4,
+        ts: now - i * 60000
+      });
+    }
+    stData.latest = {
+      t: 24.2,
+      h: 100,
+      p: 998.0,
+      wind: 48.0,
+      rain: 38.0,
+      ts: now
+    };
+    showToast("⚠️ SIMULATION: Mumbai Coastal Flash Flood Precursor Injected", "fault");
+  } else if (type === "CYCLONE") {
+    // Inject intense cyclogenesis gale winds + catastrophic barometric plunge
+    for (let i = 15; i >= 0; i--) {
+      stData.history.push({
+        t: 28.0 - (15 - i) * 0.3,
+        h: Math.min(100, 88 + (15 - i) * 0.6),
+        p: 1000.0 - (15 - i) * 1.8,
+        wind: 45 + (15 - i) * 4.5,
+        rain: 15 + (15 - i) * 2.0,
+        ts: now - i * 60000
+      });
+    }
+    stData.latest = {
+      t: 23.5,
+      h: 96,
+      p: 972.4,
+      wind: 118.5,
+      rain: 54.0,
+      ts: now
+    };
+    showToast("⚠️ SIMULATION: Odisha Super-Cyclone Precursor Injected (118 km/h winds, 972 hPa)", "fault");
+  }
+
+  // Switch view to Disaster Ops
+  const disasterNav = document.querySelector('.nav-item[data-view="disaster"]');
+  disasterNav?.click();
+
+  if (latestSimulatorState) {
+    updateUI(latestSimulatorState);
+  }
+}
+
+function resetAllDisasterScenarios() {
+  for (const st of STATIONS) {
+    const stData = simulator?.stations?.[st.id];
+    if (stData) {
+      stData.latest = {
+        t: st.climate.t,
+        h: st.climate.h,
+        p: st.climate.p,
+        wind: st.climate.wind,
+        rain: 0.0,
+        ts: Date.now()
+      };
+      stData.history = [];
+    }
+  }
+  showToast("All stations reset to nominal climatological envelope.", "normal");
+  if (latestSimulatorState) {
+    updateUI(latestSimulatorState);
+  }
+}
+
+function updateDisasterOps(state) {
+  const disasterReports = [];
+
+  for (const st of STATIONS) {
+    const stState = state.stations?.[st.id];
+    const history = stState?.history || [];
+    const report = assessDisasterRisk(st, history);
+    disasterReports.push({
+      station: st,
+      report
+    });
+  }
+
+  // Sort descending by risk score
+  disasterReports.sort((a, b) => b.report.score - a.report.score);
+  lastEvaluatedReports = disasterReports;
+
+  // Identify highest active threat
+  const highest = disasterReports[0];
+  const isHighRisk = highest && (highest.report.riskLevel === "CRITICAL" || highest.report.riskLevel === "HIGH");
+
+  // Update Global Emergency Ribbon Banner
+  const ribbon = document.getElementById("emergencyRibbon");
+  const ribbonMsg = document.getElementById("ribbonMessage");
+  const threatPill = document.getElementById("disasterGlobalThreatPill");
+  const threatText = document.getElementById("disasterGlobalThreatText");
+  const navBadge = document.getElementById("disasterNavBadge");
+
+  if (ribbon) {
+    if (isHighRisk) {
+      ribbon.style.display = "flex";
+      if (ribbonMsg) {
+        ribbonMsg.textContent = `${highest.station.name} (${highest.station.state}) — ${highest.report.riskType} Threat (${highest.report.riskLevel}): Projected impact in ${highest.report.hoursToImpact || 12}h. Evacuation corridor standby.`;
+      }
+      if (threatPill) threatPill.className = "disaster-threat-pill danger";
+      if (threatText) threatText.textContent = `RED ALERT: ${highest.report.riskType} IMMINENT (${highest.station.name})`;
+      if (navBadge) {
+        navBadge.textContent = "CRITICAL ⚠️";
+        navBadge.style.background = "var(--c-rose)";
+      }
+    } else {
+      ribbon.style.display = "none";
+      if (threatPill) threatPill.className = "disaster-threat-pill";
+      if (threatText) threatText.textContent = "WATCH: PRECURSORY MONITORING ACTIVE";
+      if (navBadge) {
+        navBadge.textContent = "Surveillance";
+        navBadge.style.background = "var(--c-teal)";
+      }
+    }
+  }
+
+  // Update Disaster KPI Cards
+  const kpiLevel = document.getElementById("disasterKpiLevel");
+  const kpiHazard = document.getElementById("disasterKpiHazard");
+  const kpiLeadTime = document.getElementById("disasterKpiLeadTime");
+  const kpiConfidence = document.getElementById("disasterKpiConfidence");
+  const kpiPop = document.getElementById("disasterKpiPop");
+  const kpiRadius = document.getElementById("disasterKpiRadius");
+  const kpiCorridor = document.getElementById("disasterKpiCorridor");
+  const kpiSafeZone = document.getElementById("disasterKpiSafeZone");
+
+  const plan = getEvacuationPlan(activeEvacStationId);
+
+  if (kpiLevel) {
+    kpiLevel.textContent = highest.report.riskLevel;
+    kpiLevel.style.color = highest.report.riskLevel === "CRITICAL" ? "var(--c-rose)" : highest.report.riskLevel === "HIGH" ? "#f97316" : highest.report.riskLevel === "MODERATE" ? "var(--c-amber)" : "var(--c-teal)";
+  }
+  if (kpiHazard) kpiHazard.textContent = `Dominant Hazard: ${highest.report.riskType === "NONE" ? "Seasonal Surveillance" : highest.report.riskType}`;
+  if (kpiLeadTime) kpiLeadTime.textContent = highest.report.hoursToImpact ? `${highest.report.hoursToImpact} - ${highest.report.hoursToImpact + 12} Hrs` : "72+ Hrs Precursor";
+  if (kpiConfidence) kpiConfidence.textContent = `Detection Confidence: ${highest.report.confidence}%`;
+  if (kpiPop) kpiPop.textContent = plan.shelterCapacity ? `~${(parseInt(plan.shelterCapacity.replace(/\D/g, "")) * 2.5).toLocaleString()} Citizens` : "~45,000";
+  if (kpiRadius) kpiRadius.textContent = `Buffer Perimeter: ${Math.round(plan.distanceKm * 0.8)} km Radius`;
+  if (kpiCorridor) kpiCorridor.textContent = "ACTIVE & CLEAR";
+  if (kpiSafeZone) kpiSafeZone.textContent = `Safe Haven: ${plan.safeZoneName}`;
+
+  // Render Disaster Table
+  renderDisasterTable(disasterReports);
+
+  // Render Evacuation Route for Active Evacuation Station
+  renderEvacuationRoute(activeEvacStationId);
+}
+
+function renderDisasterTable(reports) {
+  const tbody = document.getElementById("disasterTableBody");
+  if (!tbody) return;
+
+  const filtered = reports.filter((item) => {
+    if (activeDisasterHazardFilter === "all") return true;
+    return item.report.riskType === activeDisasterHazardFilter;
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px;">No stations currently exhibiting ${activeDisasterHazardFilter} precursors.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(({ station, report }) => {
+    const levelClass = report.riskLevel === "CRITICAL" ? "chip-fault" : report.riskLevel === "HIGH" ? "chip-watch" : report.riskLevel === "MODERATE" ? "chip-event" : "chip-normal";
+    const leadTimeStr = report.hoursToImpact ? `<b>${report.hoursToImpact} hrs</b> lead time` : "72h Precursor";
+    const signalsPreview = report.factors.length > 0 ? report.factors.slice(0, 2).join("; ") : "Atmospheric thermodynamic equilibrium nominal";
+
+    return `
+      <tr class="${station.id === activeEvacStationId ? 'active-evac-row' : ''}">
+        <td>
+          <strong>${station.name}</strong><br/>
+          <small style="color: var(--text-muted);">${station.id} &bull; Elev: ${station.elevation}m</small>
+        </td>
+        <td>
+          <span style="font-weight: 600; color: ${report.riskType === 'LANDSLIDE' ? '#f97316' : report.riskType === 'FLOOD' ? '#38bdf8' : report.riskType === 'CYCLONE' ? '#a855f7' : 'var(--text-secondary)'};">
+            ${report.riskType === 'LANDSLIDE' ? '⛰️ Landslide' : report.riskType === 'FLOOD' ? '🌊 Flash Flood' : report.riskType === 'CYCLONE' ? '🌀 Cyclone' : report.riskType === 'HEATWAVE' ? '🔥 Heatwave' : '🟢 Nominal'}
+          </span>
+        </td>
+        <td><span class="kpi-chip ${levelClass}">${report.riskLevel}</span></td>
+        <td style="font-size: 12px;">${leadTimeStr}</td>
+        <td style="font-size: 11.5px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${signalsPreview}">${signalsPreview}</td>
+        <td>
+          <button class="btn btn-secondary btn-compact inspect-evac-btn" data-station="${station.id}" style="padding: 4px 8px; font-size: 11.5px;">
+            🛡️ Inspect Evac
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  // Attach button click listeners
+  tbody.querySelectorAll(".inspect-evac-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const stId = btn.getAttribute("data-station");
+      activeEvacStationId = stId;
+      renderEvacuationRoute(stId);
+      renderDisasterTable(lastEvaluatedReports);
+      showToast(`Tactical evacuation corridor updated for: ${stId}`, "normal");
+    });
+  });
+}
+
+function renderEvacuationRoute(stationId) {
+  if (!evacMap || !evacLayersGroup) return;
+
+  const plan = getEvacuationPlan(stationId);
+  const st = getStationById(stationId);
+
+  // Clear previous layers
+  evacLayersGroup.clearLayers();
+
+  // 1. Hazard Impact Perimeter Circle (Pulsing Red)
+  const bufferRadiusMeters = (plan.distanceKm * 0.75) * 1000;
+  L.circle([st.lat, st.lng], {
+    radius: bufferRadiusMeters,
+    color: "#f43f5e",
+    fillColor: "#f43f5e",
+    fillOpacity: 0.16,
+    weight: 2,
+    dashArray: "6, 8"
+  }).addTo(evacLayersGroup).bindTooltip(`<b>Hazard Perimeter</b><br/>${Math.round(bufferRadiusMeters / 1000)} km Warning Radius`, { sticky: true });
+
+  // 2. Station Epicenter Marker
+  const originMarker = L.circleMarker([st.lat, st.lng], {
+    radius: 10,
+    fillColor: "#f43f5e",
+    color: "#ffffff",
+    weight: 2.5,
+    fillOpacity: 0.95
+  }).addTo(evacLayersGroup);
+  originMarker.bindPopup(`
+    <div style="font-family: sans-serif; font-size: 12.5px; min-width: 190px;">
+      <strong style="color: #f43f5e;">⚠️ Hazard Epicenter: ${st.name}</strong><br/>
+      <span>Elevation: ${st.elevation}m MSL</span><br/>
+      <span>Primary Hazard: <b>${plan.hazardPrimary}</b></span><br/>
+      <small style="color: #64748b;">Evacuation corridor initiated from this node</small>
+    </div>
+  `);
+
+  // 3. Safe Zone Destination Marker (Highland Relief Hub)
+  const safeMarker = L.circleMarker(plan.safeZoneCoords, {
+    radius: 12,
+    fillColor: "#10b981",
+    color: "#ffffff",
+    weight: 3,
+    fillOpacity: 0.98
+  }).addTo(evacLayersGroup);
+  safeMarker.bindPopup(`
+    <div style="font-family: sans-serif; font-size: 12.5px; min-width: 210px;">
+      <strong style="color: #10b981;">🛡️ DESIGNATED SAFE HAVEN</strong><br/>
+      <b style="color: #0284c7;">${plan.safeZoneName}</b><br/>
+      <span>Safe Elevation: <b>${plan.safeZoneElev}m MSL</b> (+${plan.safeZoneElev - st.elevation}m gain)</span><br/>
+      <span>Shelter Capacity: <b>${plan.shelterCapacity}</b></span><br/>
+      <span>Medical &amp; Food Rations: READY</span>
+    </div>
+  `);
+
+  // 4. Safest Evacuation Corridor Polyline
+  // Underlying glow
+  L.polyline(plan.routeWaypoints, {
+    color: "rgba(16, 185, 129, 0.35)",
+    weight: 12,
+    lineCap: "round"
+  }).addTo(evacLayersGroup);
+
+  // Core dashed animated route
+  const routeLine = L.polyline(plan.routeWaypoints, {
+    color: "#10b981",
+    weight: 4.5,
+    dashArray: "8, 10",
+    lineCap: "round"
+  }).addTo(evacLayersGroup);
+  routeLine.bindTooltip(`<b>Evacuation Corridor</b>: ${plan.evacuationCorridor} (${plan.distanceKm} km)`, { sticky: true });
+
+  // 5. Intermediate Waypoint Markers
+  plan.routeWaypoints.forEach((wp, idx) => {
+    if (idx > 0 && idx < plan.routeWaypoints.length - 1) {
+      L.circleMarker(wp, {
+        radius: 5,
+        fillColor: "#38bdf8",
+        color: "#ffffff",
+        weight: 1.5,
+        fillOpacity: 0.9
+      }).addTo(evacLayersGroup).bindTooltip(`Checkpoint ${idx}: Safe Route Corridor`, { direction: "top" });
+    }
+  });
+
+  // Fit map view to route bounds
+  const bounds = L.latLngBounds(plan.routeWaypoints);
+  bounds.extend(L.latLng(plan.safeZoneCoords));
+  bounds.extend(L.latLng([st.lat, st.lng]));
+  evacMap.fitBounds(bounds, { padding: [50, 50], animate: true });
+
+  // Update Logistics Panel DOM elements
+  const safeNameEl = document.getElementById("evacSafeName");
+  const safeElevEl = document.getElementById("evacSafeElev");
+  const distEtaEl = document.getElementById("evacDistanceEta");
+  const corridorEl = document.getElementById("evacCorridorName");
+  const capacityEl = document.getElementById("evacCapacity");
+  const avoidListEl = document.getElementById("evacAvoidList");
+  const smsBodyEl = document.getElementById("smsBroadcastText");
+  const smsMetaEl = document.getElementById("smsTargetMeta");
+
+  if (safeNameEl) safeNameEl.textContent = plan.safeZoneName;
+  if (safeElevEl) safeElevEl.textContent = `Elevation: ${plan.safeZoneElev}m MSL (+${plan.safeZoneElev - st.elevation}m safety elevation gain)`;
+  if (distEtaEl) distEtaEl.innerHTML = `${plan.distanceKm} km &bull; ~${plan.etaMinutes} mins transit`;
+  if (corridorEl) corridorEl.textContent = `Via ${plan.evacuationCorridor}`;
+  if (capacityEl) capacityEl.textContent = plan.shelterCapacity;
+
+  if (avoidListEl && plan.riskZonesAvoided) {
+    avoidListEl.innerHTML = plan.riskZonesAvoided.map((z) => `<li>${z}</li>`).join("");
+  }
+
+  // Update Hotline Numbers
+  const pNum = document.getElementById("callPoliceNum");
+  const sNum = document.getElementById("callSdmaNum");
+  const nNum = document.getElementById("callNdrfNum");
+  const aNum = document.getElementById("callAmbulanceNum");
+  if (pNum) pNum.textContent = plan.hotlines.police.split(" ")[0] || "112";
+  if (sNum) sNum.textContent = plan.hotlines.sdma.split(" ")[0] || "1070";
+  if (nNum) nNum.textContent = plan.hotlines.ndrf.split(" ")[0] || "080-22253200";
+  if (aNum) aNum.textContent = plan.hotlines.hospital.split(" ")[0] || "108";
+
+  // Update Cell Broadcast SMS Preview
+  if (smsBodyEl) {
+    smsBodyEl.textContent = `🚨 GOVT EMERGENCY BROADCAST [NDMA / ${st.state.toUpperCase()} SDMA]: Severe ${plan.hazardPrimary} precursor detected in ${st.city} perimeter. Pre-impact evacuation initiated. Proceed via ${plan.evacuationCorridor} directly to ${plan.safeZoneName}. Stay clear of low river crossings & steep slopes. Dial 112 for rapid rescue.`;
+  }
+  if (smsMetaEl) {
+    smsMetaEl.textContent = `Target: ${st.city} & Surrounding Taluks (${Math.round(plan.distanceKm * 0.8)} km Radius)`;
+  }
+}
+
+function dispatchEmergencyBroadcast(stationId) {
+  const plan = getEvacuationPlan(stationId);
+  const st = getStationById(stationId);
+  const btn = document.getElementById("dispatchAlertBtn");
+  const pBar = document.getElementById("smsProgressBar");
+  const pStatus = document.getElementById("smsDeliveryStatus");
+  const pTime = document.getElementById("smsTimestamp");
+  const logEl = document.getElementById("dispatchLogContent");
+
+  if (!btn) return;
+
+  btn.disabled = true;
+  btn.innerHTML = `<span>⏳</span><span>TRANSMITTING CELL BROADCAST WIRE...</span>`;
+
+  if (pBar) pBar.style.width = "40%";
+  if (pStatus) pStatus.textContent = "Transmitting priority alert to telecom towers & police wire...";
+
+  setTimeout(() => {
+    if (pBar) pBar.style.width = "100%";
+    const timeNow = new Date().toLocaleTimeString();
+    if (pStatus) pStatus.textContent = `✅ Successfully delivered to ~52,400 Handsets via Channel 4370`;
+    if (pTime) pTime.textContent = `Last Broadcast: Today at ${timeNow}`;
+
+    // Highlight Agency Status Badges to Dispatched
+    const agencies = [
+      { id: "policeStatus", cardId: "agencyPoliceCard", status: "ACKNOWLEDGED (Code Red)" },
+      { id: "sdmaStatus", cardId: "agencySdmaCard", status: "OPS CENTER ACTIVATED" },
+      { id: "ndrfStatus", cardId: "agencyNdrfCard", status: "BN EN ROUTE TO ZONE" },
+      { id: "hospitalStatus", cardId: "agencyHospitalCard", status: "TRAUMA STANDBY (50 BEDS)" }
+    ];
+
+    agencies.forEach((a) => {
+      const el = document.getElementById(a.id);
+      const card = document.getElementById(a.cardId);
+      if (el) el.textContent = a.status;
+      if (card) card.classList.add("dispatched");
+    });
+
+    // Append to Dispatch Wire Log
+    if (logEl) {
+      const entry = document.createElement("div");
+      entry.className = "log-entry alert-sent";
+      entry.innerHTML = `
+        <strong>[${timeNow}] 🚨 MULTI-AGENCY EMERGENCY BROADCAST SENT:</strong><br/>
+        &bull; <b>Cell Broadcast Channel 4370:</b> Transmitted to ${st.city} perimeter (${plan.distanceKm * 0.8} km buffer).<br/>
+        &bull; <b>Police HQ (112):</b> Automated high-priority tactical ticket generated.<br/>
+        &bull; <b>SDMA / NDRF:</b> Evacuation route <i>${plan.evacuationCorridor}</i> activated.<br/>
+        &bull; <b>Designated Safe Haven:</b> <i>${plan.safeZoneName}</i> (Cap: ${plan.shelterCapacity}).
+      `;
+      logEl.insertBefore(entry, logEl.firstChild);
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = `<span>⚡</span><span>DISPATCH EMERGENCY ALERT NOW</span>`;
+
+    showToast(`🚨 EMERGENCY BROADCAST COMPLETED! 52,400 Handsets & Police HQ notified for ${st.name}.`, "fault");
+  }, 1200);
 }

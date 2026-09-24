@@ -404,3 +404,229 @@ export function getStationById(id) {
 export function getAllStations() {
   return STATIONS;
 }
+
+export const EVACUATION_PLANS = {
+  "HSN-01": {
+    stationId: "HSN-01",
+    hazardPrimary: "LANDSLIDE & MOUNTAIN FLASH FLOOD",
+    safeZoneName: "Sakleshpur Highland Relief Center (Ridge Campus)",
+    safeZoneCoords: [12.9812, 75.8115],
+    safeZoneElev: 995,
+    distanceKm: 14.2,
+    etaMinutes: 28,
+    shelterCapacity: "6,500 Persons",
+    evacuationCorridor: "NH-75 Western Ridge Elevated Bypass",
+    riskZonesAvoided: ["Hemavathi River basin", "Donigal unstable cliff face", "Marannahalli ghat hairpin"],
+    routeWaypoints: [
+      [13.0033, 76.1004], // Station origin
+      [12.9980, 76.0350],
+      [12.9890, 75.9520],
+      [12.9830, 75.8850],
+      [12.9812, 75.8115]  // Safe Zone
+    ],
+    hotlines: {
+      police: "112 / 08172-268411 (Hassan Control Room)",
+      sdma: "1070 (Karnataka SDMA Disaster Cell)",
+      ndrf: "080-22253200 (NDRF 10th Bn Quick Response)",
+      hospital: "108 / 08172-267822 (District Hospital Hassan)"
+    }
+  },
+  "BOM-01": {
+    stationId: "BOM-01",
+    hazardPrimary: "COASTAL STORM SURGE & HIGH-TIDE FLOOD",
+    safeZoneName: "Powai Highland Emergency Shelter (IIT Bombay Ridge)",
+    safeZoneCoords: [19.1334, 72.9133],
+    safeZoneElev: 118,
+    distanceKm: 27.5,
+    etaMinutes: 45,
+    shelterCapacity: "25,000 Persons",
+    evacuationCorridor: "Eastern Freeway & JVLR Elevated Viaduct",
+    riskZonesAvoided: ["Colaba sea-facing esplanade", "Mithi River lowlands", "Hindmata inundation depression"],
+    routeWaypoints: [
+      [18.9067, 72.8147], // Colaba
+      [18.9500, 72.8350],
+      [19.0150, 72.8600],
+      [19.0700, 72.8900],
+      [19.1334, 72.9133]  // Powai Highland
+    ],
+    hotlines: {
+      police: "100 / 022-22621855 (Mumbai Police Ops)",
+      sdma: "1077 (Maharashtra Emergency Management)",
+      ndrf: "022-27782163 (NDRF 5th Bn Pune-Mumbai)",
+      hospital: "108 / 022-24107000 (KEM Hospital & Trauma)"
+    }
+  },
+  "COK-01": {
+    stationId: "COK-01",
+    hazardPrimary: "FLASH FLOOD & PERIYAR RIVER SURGE",
+    safeZoneName: "Kakkanad Civil Station Highland Camp",
+    safeZoneCoords: [10.0159, 76.3533],
+    safeZoneElev: 48,
+    distanceKm: 16.8,
+    etaMinutes: 32,
+    shelterCapacity: "14,000 Persons",
+    evacuationCorridor: "Seaport-Airport High-Level Corridor",
+    riskZonesAvoided: ["Aluva river bank", "Vembanad backwater estuary", "MG Road waterlogged canals"],
+    routeWaypoints: [
+      [9.9650, 76.2425],  // Willingdon Island
+      [9.9800, 76.2800],
+      [9.9950, 76.3150],
+      [10.0159, 76.3533]  // Kakkanad
+    ],
+    hotlines: {
+      police: "112 / 0484-2394770 (Kochi City Police)",
+      sdma: "1077 (Kerala SDMA Emergency Operations)",
+      ndrf: "0495-2371477 (NDRF Arakkonam Unit Kerala)",
+      hospital: "108 / 0484-2402044 (Ernakulam General Hospital)"
+    }
+  },
+  "BBI-01": {
+    stationId: "BBI-01",
+    hazardPrimary: "SUPER-CYCLONE & TIDAL INUNDATION",
+    safeZoneName: "Chandaka Highland Multi-Purpose Cyclone Shelter",
+    safeZoneCoords: [20.3750, 85.7620],
+    safeZoneElev: 84,
+    distanceKm: 18.2,
+    etaMinutes: 35,
+    shelterCapacity: "18,000 Persons",
+    evacuationCorridor: "Nandankanan North-Western Highland Expressway",
+    riskZonesAvoided: ["Kuakhai river floodplain", "Daya canal confluence", "Old Town low-drainage basin"],
+    routeWaypoints: [
+      [20.2444, 85.8178], // Bhubaneswar Station
+      [20.2850, 85.8050],
+      [20.3300, 85.7850],
+      [20.3750, 85.7620]  // Chandaka Shelter
+    ],
+    hotlines: {
+      police: "112 / 0674-2530035 (Bhubaneswar Police HQ)",
+      sdma: "1070 (OSDMA Odisha Disaster Authority)",
+      ndrf: "0674-2575004 (NDRF 3rd Bn Mundali/Cuttack)",
+      hospital: "108 / 0674-2391983 (Capital Hospital BBI)"
+    }
+  },
+  "CCU-01": {
+    stationId: "CCU-01",
+    hazardPrimary: "SEVERE RIVER SURGE & URBAN INUNDATION",
+    safeZoneName: "Salt Lake Sector-V Elevated Disaster Hub",
+    safeZoneCoords: [22.5800, 88.4350],
+    safeZoneElev: 14,
+    distanceKm: 13.5,
+    etaMinutes: 26,
+    shelterCapacity: "20,000 Persons",
+    evacuationCorridor: "Maa Flyover & EM Bypass Elevated Artery",
+    riskZonesAvoided: ["Hooghly riverside ghats", "Alipore canal basin", "Park Circus lowlands"],
+    routeWaypoints: [
+      [22.5312, 88.3245], // Alipore
+      [22.5450, 88.3650],
+      [22.5620, 88.4000],
+      [22.5800, 88.4350]  // Salt Lake Hub
+    ],
+    hotlines: {
+      police: "100 / 033-22143024 (Kolkata Police Lalbazar)",
+      sdma: "1070 (West Bengal Disaster Management)",
+      ndrf: "033-25264449 (NDRF 2nd Bn Haringhata)",
+      hospital: "108 / 033-22231589 (SSKM Hospital Kolkata)"
+    }
+  },
+  "MAA-01": {
+    stationId: "MAA-01",
+    hazardPrimary: "NORTHEAST MONSOON INUNDATION & ADYAR FLOOD",
+    safeZoneName: "Guindy Raj Bhavan Highland Relief Complex",
+    safeZoneCoords: [13.0067, 80.2206],
+    safeZoneElev: 38,
+    distanceKm: 11.4,
+    etaMinutes: 22,
+    shelterCapacity: "15,000 Persons",
+    evacuationCorridor: "Anna Salai Elevated Flyover Grid",
+    riskZonesAvoided: ["Adyar river mouth", "Marina Beach storm line", "Velachery low basin"],
+    routeWaypoints: [
+      [13.0418, 80.2505], // Nungambakkam
+      [13.0300, 80.2400],
+      [13.0150, 80.2280],
+      [13.0067, 80.2206]  // Guindy Complex
+    ],
+    hotlines: {
+      police: "100 / 044-23452359 (Greater Chennai Police)",
+      sdma: "1070 (TNSDMA Tamil Nadu Disaster Dept)",
+      ndrf: "04177-226001 (NDRF 4th Bn Arakkonam HQ)",
+      hospital: "108 / 044-25305000 (Rajiv Gandhi Govt General)"
+    }
+  },
+  "DEL-01": {
+    stationId: "DEL-01",
+    hazardPrimary: "YAMUNA FLOOD SPILL & SEVERE HEAT DOME",
+    safeZoneName: "Central Ridge Elevated Disaster Shelter",
+    safeZoneCoords: [28.6050, 77.1850],
+    safeZoneElev: 248,
+    distanceKm: 8.5,
+    etaMinutes: 18,
+    shelterCapacity: "30,000 Persons",
+    evacuationCorridor: "Sardar Patel Marg High Ground Corridor",
+    riskZonesAvoided: ["Yamuna floodplains", "Kashmere Gate river ring", "Mayur Vihar lowlands"],
+    routeWaypoints: [
+      [28.5889, 77.2217], // Safdarjung
+      [28.5950, 77.2050],
+      [28.6050, 77.1850]  // Central Ridge
+    ],
+    hotlines: {
+      police: "112 / 011-23490010 (Delhi Police PCR)",
+      sdma: "1077 (DDMA Delhi Disaster Management)",
+      ndrf: "011-24363260 (NDRF HQ New Delhi)",
+      hospital: "102 / 011-26588500 (AIIMS New Delhi)"
+    }
+  },
+  "BLR-IMD": {
+    stationId: "BLR-IMD",
+    hazardPrimary: "SEVERE URBAN FLASH FLOOD & LAKE BREACH",
+    safeZoneName: "Jnana Bharathi Highland Emergency Relief Complex",
+    safeZoneCoords: [12.9350, 77.5020],
+    safeZoneElev: 948,
+    distanceKm: 13.8,
+    etaMinutes: 25,
+    shelterCapacity: "16,000 Persons",
+    evacuationCorridor: "Mysore Road Elevated Expressway Corridor",
+    riskZonesAvoided: ["Bellandur lake overflow area", "Rainbow Drive depression", "Koramangala storm drain basin"],
+    routeWaypoints: [
+      [12.9716, 77.5946], // Bengaluru Central
+      [12.9600, 77.5600],
+      [12.9480, 77.5300],
+      [12.9350, 77.5020]  // Jnana Bharathi
+    ],
+    hotlines: {
+      police: "112 / 080-22942222 (Bengaluru City Police)",
+      sdma: "1070 (Karnataka SDMA Command Center)",
+      ndrf: "080-22253200 (NDRF Southern Wing)",
+      hospital: "108 / 080-22977400 (Victoria Hospital Trauma)"
+    }
+  }
+};
+
+export function getEvacuationPlan(stationId) {
+  if (EVACUATION_PLANS[stationId]) {
+    return EVACUATION_PLANS[stationId];
+  }
+  const st = getStationById(stationId);
+  return {
+    stationId: st.id,
+    hazardPrimary: "REGIONAL SEVERE WEATHER & FLASH INUNDATION",
+    safeZoneName: `${st.city} District Civil Defense Safe Zone`,
+    safeZoneCoords: [st.lat + 0.05, st.lng + 0.05],
+    safeZoneElev: (st.elevation || 100) + 40,
+    distanceKm: 12.0,
+    etaMinutes: 25,
+    shelterCapacity: "10,000 Persons",
+    evacuationCorridor: `${st.city} High-Elevation Arterial Bypass`,
+    riskZonesAvoided: ["Low-lying drainage nullahs", "Waterlogged railway underpasses"],
+    routeWaypoints: [
+      [st.lat, st.lng],
+      [st.lat + 0.02, st.lng + 0.02],
+      [st.lat + 0.05, st.lng + 0.05]
+    ],
+    hotlines: {
+      police: "112 (National Emergency)",
+      sdma: "1070 (State Disaster Management)",
+      ndrf: "1078 (NDRF Emergency Hotline)",
+      hospital: "108 (State Emergency Ambulance)"
+    }
+  };
+}
