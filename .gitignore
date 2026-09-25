@@ -8,3 +8,14 @@ node_modules/
 .vscode/
 _pdf_pages/
 powershell.cmd
+
+# Environment & Secrets (Never commit secrets to repository)
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+secrets/
+
+# Allow .env.example template
+!.env.example

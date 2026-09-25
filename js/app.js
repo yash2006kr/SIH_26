@@ -6,7 +6,7 @@
 
 import { STATIONS, getStationById, getEvacuationPlan, EVACUATION_PLANS } from "./stations.js";
 import { WeatherSimulator } from "./simulator.js";
-import { AiCopilot, getActiveApiKey, setActiveApiKey } from "./ai-copilot.js";
+import { AiCopilot, getSessionApiKey, setSessionApiKey } from "./ai-copilot.js";
 import { DepartmentDataIngest } from "./data-ingest.js";
 import { assessDisasterRisk } from "./ai-engine.js";
 
@@ -1355,12 +1355,33 @@ function initCopilotUI() {
 
   const keyBtn = document.getElementById("copilotKeyBtn");
   keyBtn?.addEventListener("click", () => {
-    const current = getActiveApiKey();
-    const masked = current ? `${current.slice(0, 7)}...${current.slice(-4)}` : "None";
-    const entered = window.prompt(`Google Gemini 2.5 Flash API Key:\nStatus: Active (${masked})\n\nEnter new key if you wish to override (stored in browser):`, current || "");
-    if (entered !== null && entered.trim()) {
-      setActiveApiKey(entered.trim());
-      showToast("Google Gemini API Key updated successfully!", "normal");
+    const hasBackend = copilot?.backendAvailable;
+    const currentSessionKey = getSessionApiKey();
+    const masked = currentSessionKey ? `${currentSessionKey.slice(0, 6)}...${currentSessionKey.slice(-4)}` : "None";
+
+    let promptText = "🛡️ SkyGuard AI - Security & API Configuration\n";
+    promptText += "===============================================\n\n";
+    if (hasBackend) {
+      promptText += "✅ SECURE BACKEND PROXY: ACTIVE (/api/chat)\n";
+      promptText += "• Queries are routed securely via server environment variables.\n";
+      promptText += "• No client-side key needed!\n\n";
+    } else {
+      promptText += "ℹ️ SERVERLESS / STATIC MODE (GitHub Pages)\n";
+      promptText += "• Built-in Offline Meteorological AI is currently ACTIVE.\n";
+      promptText += "• Optional: To connect to Gemini 2.5 Flash on static hosting, enter a temporary session key below.\n";
+      promptText += "• Note: Session keys are held strictly in memory (sessionStorage) and auto-destroyed when this tab closes.\n\n";
+    }
+    promptText += `Current Session Key: ${masked}\n\n`;
+    promptText += "Enter Gemini API Key (or leave blank to use Offline AI / Backend Proxy):";
+
+    const entered = window.prompt(promptText, currentSessionKey);
+    if (entered !== null) {
+      setSessionApiKey(entered.trim());
+      if (entered.trim()) {
+        showToast("Session Gemini API Key configured for this browser tab.", "normal");
+      } else {
+        showToast("Session key cleared. Reverted to backend proxy / built-in offline intelligence.", "normal");
+      }
     }
   });
 
@@ -1387,42 +1408,59 @@ function initCopilotUI() {
     });
   }
 
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   function formatMarkdown(raw) {
     if (!raw) return "";
 
-    // 1. Code blocks ```lang\ncode\n```
-    let formatted = raw.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
-      const cleanCode = code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      return `<pre><code>${cleanCode}</code></pre>`;
+    // 1. Extract and sanitize code blocks ```lang\ncode\n```
+    const codeBlocks = [];
+    let text = raw.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+      const idx = codeBlocks.length;
+      codeBlocks.push(`<pre><code>${escapeHtml(code)}</code></pre>`);
+      return `__CODE_BLOCK_${idx}__`;
     });
 
-    // 2. Headers (###, ##, #)
-    formatted = formatted
+    // 2. HTML-escape all text to protect against XSS injection
+    text = escapeHtml(text);
+
+    // 3. Headers (###, ##, #)
+    text = text
       .replace(/^### (.*$)/gim, '<h4>$1</h4>')
       .replace(/^## (.*$)/gim, '<h4 style="font-size: 15px; color: #38bdf8;">$1</h4>')
       .replace(/^# (.*$)/gim, '<h4 style="font-size: 16px; color: #38bdf8;">$1</h4>');
 
-    // 3. Blockquotes
-    formatted = formatted.replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>');
+    // 4. Blockquotes
+    text = text.replace(/^&gt; (.*$)/gim, '<blockquote>$1</blockquote>');
 
-    // 4. Bold & Italic
-    formatted = formatted
+    // 5. Bold & Italic
+    text = text
       .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>');
 
-    // 5. Inline code
-    formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // 6. Inline code
+    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
 
-    // 6. Bullet lists
-    formatted = formatted.replace(/^[\*\-•] (.*$)/gim, '<li>$1</li>');
-    formatted = formatted.replace(/(<li>.*<\/li>)/gims, '<ul>$1</ul>');
-    formatted = formatted.replace(/<\/ul>\s*<ul>/g, '');
+    // 7. Bullet lists
+    text = text.replace(/^[\*\-•] (.*$)/gim, '<li>$1</li>');
+    text = text.replace(/(<li>.*<\/li>)/gims, '<ul>$1</ul>');
+    text = text.replace(/<\/ul>\s*<ul>/g, '');
 
-    // 7. Paragraph breaks
-    formatted = formatted.replace(/\n\n/g, '<br/><br/>').replace(/\n/g, '<br/>');
+    // 8. Paragraph breaks
+    text = text.replace(/\n\n/g, '<br/><br/>').replace(/\n/g, '<br/>');
 
-    return formatted;
+    // 9. Re-insert safe code blocks
+    text = text.replace(/__CODE_BLOCK_(\d+)__/g, (match, idx) => codeBlocks[idx] || "");
+
+    return text;
   }
 
   function renderCopilotMessages() {
