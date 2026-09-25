@@ -41,6 +41,23 @@ export function setSessionApiKey(newKey) {
   }
 }
 
+export function getAuthToken() {
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    return sessionStorage.getItem("skyguard_auth_token") || "";
+  }
+  return "";
+}
+
+export function setAuthToken(token) {
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    if (token && token.trim()) {
+      sessionStorage.setItem("skyguard_auth_token", token.trim());
+    } else {
+      sessionStorage.removeItem("skyguard_auth_token");
+    }
+  }
+}
+
 // Backward compatibility helper
 export function getActiveApiKey() {
   return getSessionApiKey();
@@ -187,15 +204,25 @@ FORMATTING RULES:
       }
     };
 
-    // Strategy 1: Try secure backend proxy (/api/chat)
+    // Strategy 1: Try secure backend proxy (/api/chat) with Operator Authentication
     try {
+      const headers = { "Content-Type": "application/json" };
+      const authToken = getAuthToken();
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+
       const proxyResp = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(payload)
       });
 
-      if (proxyResp.ok) {
+      if (proxyResp.status === 401) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("skyguard:auth_required"));
+        }
+      } else if (proxyResp.ok) {
         const data = await proxyResp.json();
         const aiReply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (aiReply) {
@@ -295,5 +322,45 @@ FORMATTING RULES:
       `• **Active Station:** **${stName}** (${st?.id || "N/A"}) operating at **${trust}% Trust Index**.\n` +
       `• **AI Pipeline Verdict:** ${analysis?.rootCause || "All sensor transducers operating within standard WMO tolerance envelopes"}.\n` +
       `• **Data Ingestion Status:** Telemetry is actively verified by SkyGuard's 5-Tier AI Anomaly Detection Pipeline.`;
+  }
+
+  async authenticate(username, password) {
+    try {
+      const resp = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.token) {
+          setAuthToken(data.token);
+          return { success: true, user: data.user, role: data.role };
+        }
+      }
+      const err = await resp.json().catch(() => ({}));
+      return { success: false, error: err.error || "Authentication failed." };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async checkAuthStatus() {
+    try {
+      const token = getAuthToken();
+      const headers = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const resp = await fetch("/api/auth/verify", { headers });
+      if (resp.ok) {
+        return await resp.json();
+      }
+    } catch (e) {
+      // Backend offline
+    }
+    return { authenticated: false };
+  }
+
+  logout() {
+    setAuthToken("");
   }
 }

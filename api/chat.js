@@ -4,10 +4,11 @@
  * Team AI Avengers
  * 
  * Security Features:
- * 1. Keeps GEMINI_API_KEY safely on serverless backend, preventing browser key leakage.
- * 2. Sliding window IP rate limiting to mitigate quota exhaustion and automated abuse.
- * 3. Payload size enforcement (max 100 KB) and strict JSON structure validation.
- * 4. Zero secret disclosure in health endpoints.
+ * 1. Authentication Layer: Enforces Bearer token verification if SKYGUARD_AUTH_TOKEN is configured.
+ * 2. Server-side key isolation: Prevents browser API key leakage.
+ * 3. Sliding window IP rate limiting to mitigate quota exhaustion and automated abuse.
+ * 4. Payload size enforcement (max 100 KB) and strict JSON structure validation.
+ * 5. Zero secret disclosure in health endpoints.
  */
 
 // In-memory sliding-window rate limiter (per serverless instance)
@@ -31,7 +32,7 @@ export default async function handler(req, res) {
   // CORS configuration
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
 
@@ -39,13 +40,15 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
 
-  // Handle health check (never disclose partial key)
+  // Handle health check (never disclose secret keys)
   if (req.method === "GET") {
     const key = process.env.GEMINI_API_KEY;
+    const authRequired = Boolean(process.env.SKYGUARD_AUTH_TOKEN);
     return res.status(200).json({
       status: "healthy",
       backend: "vercel-serverless",
       keyConfigured: Boolean(key),
+      authRequired,
       model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
       rateLimit: {
         windowSeconds: 60,
@@ -68,6 +71,19 @@ export default async function handler(req, res) {
     });
   }
 
+  // Authentication enforcement (if SKYGUARD_AUTH_TOKEN is configured)
+  const expectedAuthToken = process.env.SKYGUARD_AUTH_TOKEN;
+  if (expectedAuthToken) {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    if (token !== expectedAuthToken) {
+      return res.status(401).json({
+        error: "Unauthorized. Valid Bearer token required to access SkyGuard AI proxy.",
+        authRequired: true
+      });
+    }
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(503).json({
@@ -88,7 +104,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Invalid contents: must be a non-empty array." });
   }
 
-  // Cap conversation turns to prevent token bomb attacks
   const sanitizedContents = contents.length > 25 ? contents.slice(-25) : contents;
 
   const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";

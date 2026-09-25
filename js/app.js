@@ -63,6 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initNavigation();
   initTheme();
   initStationPickers();
+  initAuthUI();
   initCopilotUI();
   initSimulationButtons();
   initBatchCsvUI();
@@ -1334,6 +1335,99 @@ function runBatchCsvAudit(csvText) {
       `;
     }).join("");
   }
+}
+
+/* ----------------------------------------------------
+   OPERATOR AUTHENTICATION & ACCESS CONTROL
+   ---------------------------------------------------- */
+function initAuthUI() {
+  const authBtn = document.getElementById("authBtn");
+  const authModal = document.getElementById("authModalOverlay");
+  const closeBtn = document.getElementById("closeAuthModalBtn");
+  const loginForm = document.getElementById("authLoginForm");
+  const signOutBtn = document.getElementById("authSignOutBtn");
+  const statusBanner = document.getElementById("authStatusBanner");
+  const badgeIcon = document.getElementById("authBadgeIcon");
+  const badgeText = document.getElementById("authBadgeText");
+  const usernameInput = document.getElementById("authUsernameInput");
+  const passwordInput = document.getElementById("authPasswordInput");
+
+  function openAuthModal() {
+    if (authModal) authModal.style.display = "flex";
+  }
+
+  function closeAuthModal() {
+    if (authModal) authModal.style.display = "none";
+  }
+
+  async function refreshAuthBadge() {
+    const status = await copilot.checkAuthStatus();
+    if (status.authenticated) {
+      if (badgeIcon) badgeIcon.textContent = "🟢";
+      if (badgeText) badgeText.textContent = status.user ? `${status.user} (Active)` : "Operator Active";
+      if (signOutBtn) signOutBtn.style.display = "inline-flex";
+      if (statusBanner) {
+        statusBanner.style.background = "rgba(16, 185, 129, 0.1)";
+        statusBanner.style.borderColor = "rgba(16, 185, 129, 0.3)";
+        statusBanner.style.color = "var(--c-teal)";
+        statusBanner.innerHTML = `✅ <b>Authenticated:</b> Logged in as <code>${escapeHtml(status.user || "operator")}</code> (${escapeHtml(status.role || "IMD Duty Officer")}). Gemini 2.5 Flash pipeline unlocked.`;
+      }
+    } else {
+      if (badgeIcon) badgeIcon.textContent = "🔒";
+      if (badgeText) badgeText.textContent = "Sign In";
+      if (signOutBtn) signOutBtn.style.display = "none";
+      if (statusBanner) {
+        statusBanner.style.background = "rgba(56, 189, 248, 0.08)";
+        statusBanner.style.borderColor = "rgba(56, 189, 248, 0.25)";
+        statusBanner.style.color = "var(--text-secondary)";
+        statusBanner.innerHTML = "🔒 <b>Access Control:</b> Authenticate with operator credentials to unlock protected Gemini 2.5 Flash intelligence pipelines and disaster advisory routing.";
+      }
+    }
+  }
+
+  authBtn?.addEventListener("click", openAuthModal);
+  closeBtn?.addEventListener("click", closeAuthModal);
+  authModal?.addEventListener("click", (e) => {
+    if (e.target === authModal) closeAuthModal();
+  });
+
+  loginForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const user = usernameInput?.value?.trim() || "";
+    const pass = passwordInput?.value?.trim() || "";
+    const submitBtn = document.getElementById("authSubmitBtn");
+    if (submitBtn) submitBtn.disabled = true;
+
+    const res = await copilot.authenticate(user, pass);
+    if (submitBtn) submitBtn.disabled = false;
+
+    if (res.success) {
+      showToast(`Authenticated as ${res.user} (${res.role})`, "normal");
+      await refreshAuthBadge();
+      closeAuthModal();
+    } else {
+      if (statusBanner) {
+        statusBanner.style.background = "rgba(244, 63, 94, 0.1)";
+        statusBanner.style.borderColor = "rgba(244, 63, 94, 0.3)";
+        statusBanner.style.color = "var(--c-rose)";
+        statusBanner.innerHTML = `❌ <b>Authentication Failed:</b> ${escapeHtml(res.error || "Invalid credentials")}`;
+      }
+    }
+  });
+
+  signOutBtn?.addEventListener("click", async () => {
+    copilot.logout();
+    showToast("Operator signed out.", "normal");
+    await refreshAuthBadge();
+    closeAuthModal();
+  });
+
+  window.addEventListener("skyguard:auth_required", () => {
+    openAuthModal();
+    showToast("Authentication required to access protected Gemini AI features.", "warning");
+  });
+
+  refreshAuthBadge();
 }
 
 /* ----------------------------------------------------
