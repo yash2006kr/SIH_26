@@ -151,10 +151,21 @@ export class DepartmentDataIngest {
   }
 
   /**
-   * Generates a downloadable audited CSV with AI flags and imputed values
+   * Generates a downloadable audited CSV with AI flags and imputed values.
+   * Sanitizes all fields to prevent CSV formula injection (CWE-1236).
    */
   exportAuditedCSV() {
     if (!this.batchResults || !this.batchResults.records.length) return "";
+
+    const sanitizeField = (val) => {
+      if (val == null) return '""';
+      let s = String(val);
+      // Prepend single quote if field starts with formula trigger characters (=, +, -, @, \t, \r)
+      if (/^[=+\-@\t\r]/.test(s)) {
+        s = "'" + s;
+      }
+      return `"${s.replace(/"/g, '""')}"`;
+    };
 
     const headers = [
       "Row",
@@ -179,20 +190,20 @@ export class DepartmentDataIngest {
       const imp = a.imputed;
       return [
         r.row,
-        `"${r.timestamp}"`,
-        `"${r.stationId}"`,
+        sanitizeField(r.timestamp),
+        sanitizeField(r.stationId),
         r.raw.t,
         r.raw.h,
         r.raw.p,
-        a.status,
-        a.qcFlag,
+        sanitizeField(a.status),
+        sanitizeField(a.qcFlag),
         a.trustIndex,
-        `"${a.eventClassification}"`,
-        `"${a.rootCause.replace(/"/g, '""')}"`,
+        sanitizeField(a.eventClassification),
+        sanitizeField(a.rootCause),
         imp.t,
         imp.h,
         imp.p,
-        `"${(a.explanations[0] || '').replace(/"/g, '""')}"`
+        sanitizeField(a.explanations[0] || "")
       ].join(",");
     });
 

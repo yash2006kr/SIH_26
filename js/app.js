@@ -16,6 +16,19 @@ let copilot;
 let deptIngest;
 let latestSimulatorState = null;
 
+/**
+ * Global HTML sanitizer to mitigate Cross-Site Scripting (XSS)
+ */
+export function escapeHtml(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // Chart references
 let tempDewChart = null;
 let multiParamChart = null;
@@ -991,11 +1004,11 @@ function updateAlertsFeed(alerts) {
     const chipClass = a.status === "FAULT" ? "chip-fault" : a.status === "EVENT" ? "chip-event" : "chip-watch";
     return `
       <tr>
-        <td style="font-family: var(--font-mono); font-size: 11.5px;">${a.time}</td>
-        <td><strong>${a.stationId}</strong></td>
-        <td><span class="kpi-chip ${chipClass}">${a.status}</span></td>
-        <td>${a.severity}</td>
-        <td style="max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${a.rootCause}">${a.rootCause}</td>
+        <td style="font-family: var(--font-mono); font-size: 11.5px;">${escapeHtml(a.time)}</td>
+        <td><strong>${escapeHtml(a.stationId)}</strong></td>
+        <td><span class="kpi-chip ${chipClass}">${escapeHtml(a.status)}</span></td>
+        <td>${escapeHtml(a.severity)}</td>
+        <td style="max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(a.rootCause)}">${escapeHtml(a.rootCause)}</td>
       </tr>
     `;
   }).join("");
@@ -1307,16 +1320,16 @@ function runBatchCsvAudit(csvText) {
       const chipClass = a.status === "FAULT" ? "chip-fault" : a.status === "EVENT" ? "chip-event" : "chip-normal";
       return `
         <tr>
-          <td>${r.row}</td>
-          <td style="font-family: var(--font-mono); font-size: 11px;">${new Date(r.timestamp).toLocaleTimeString()}</td>
-          <td><strong>${r.stationId}</strong></td>
-          <td>${r.raw.t}°C</td>
-          <td>${r.raw.h}%</td>
-          <td>${r.raw.p} hPa</td>
-          <td><span class="kpi-chip ${chipClass}">${a.status}</span></td>
-          <td><b>${a.qcFlag}</b></td>
-          <td style="font-size: 11.5px;">${a.eventClassification}</td>
-          <td style="color: var(--c-teal); font-weight: 600;">${a.imputed.t}°C</td>
+          <td>${Number(r.row)}</td>
+          <td style="font-family: var(--font-mono); font-size: 11px;">${escapeHtml(new Date(r.timestamp).toLocaleTimeString())}</td>
+          <td><strong>${escapeHtml(r.stationId)}</strong></td>
+          <td>${escapeHtml(r.raw.t)}°C</td>
+          <td>${escapeHtml(r.raw.h)}%</td>
+          <td>${escapeHtml(r.raw.p)} hPa</td>
+          <td><span class="kpi-chip ${chipClass}">${escapeHtml(a.status)}</span></td>
+          <td><b>${escapeHtml(a.qcFlag)}</b></td>
+          <td style="font-size: 11.5px;">${escapeHtml(a.eventClassification)}</td>
+          <td style="color: var(--c-teal); font-weight: 600;">${escapeHtml(a.imputed.t)}°C</td>
         </tr>
       `;
     }).join("");
@@ -1406,15 +1419,6 @@ function initCopilotUI() {
       });
       suggestionsContainer.appendChild(chip);
     });
-  }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
   }
 
   function formatMarkdown(raw) {
@@ -1799,25 +1803,25 @@ function renderDisasterTable(reports) {
 
   tbody.innerHTML = filtered.map(({ station, report }) => {
     const levelClass = report.riskLevel === "CRITICAL" ? "chip-fault" : report.riskLevel === "HIGH" ? "chip-watch" : report.riskLevel === "MODERATE" ? "chip-event" : "chip-normal";
-    const leadTimeStr = report.hoursToImpact ? `<b>${report.hoursToImpact} hrs</b> lead time` : "72h Precursor";
+    const leadTimeStr = report.hoursToImpact ? `<b>${escapeHtml(report.hoursToImpact)} hrs</b> lead time` : "72h Precursor";
     const signalsPreview = report.factors.length > 0 ? report.factors.slice(0, 2).join("; ") : "Atmospheric thermodynamic equilibrium nominal";
 
     return `
       <tr class="${station.id === activeEvacStationId ? 'active-evac-row' : ''}">
         <td>
-          <strong>${station.name}</strong><br/>
-          <small style="color: var(--text-muted);">${station.id} &bull; Elev: ${station.elevation}m</small>
+          <strong>${escapeHtml(station.name)}</strong><br/>
+          <small style="color: var(--text-muted);">${escapeHtml(station.id)} &bull; Elev: ${escapeHtml(station.elevation)}m</small>
         </td>
         <td>
           <span style="font-weight: 600; color: ${report.riskType === 'LANDSLIDE' ? '#f97316' : report.riskType === 'FLOOD' ? '#38bdf8' : report.riskType === 'CYCLONE' ? '#a855f7' : 'var(--text-secondary)'};">
             ${report.riskType === 'LANDSLIDE' ? '⛰️ Landslide' : report.riskType === 'FLOOD' ? '🌊 Flash Flood' : report.riskType === 'CYCLONE' ? '🌀 Cyclone' : report.riskType === 'HEATWAVE' ? '🔥 Heatwave' : '🟢 Nominal'}
           </span>
         </td>
-        <td><span class="kpi-chip ${levelClass}">${report.riskLevel}</span></td>
+        <td><span class="kpi-chip ${levelClass}">${escapeHtml(report.riskLevel)}</span></td>
         <td style="font-size: 12px;">${leadTimeStr}</td>
-        <td style="font-size: 11.5px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${signalsPreview}">${signalsPreview}</td>
+        <td style="font-size: 11.5px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(signalsPreview)}">${escapeHtml(signalsPreview)}</td>
         <td>
-          <button class="btn btn-secondary btn-compact inspect-evac-btn" data-station="${station.id}" style="padding: 4px 8px; font-size: 11.5px;">
+          <button class="btn btn-secondary btn-compact inspect-evac-btn" data-station="${escapeHtml(station.id)}" style="padding: 4px 8px; font-size: 11.5px;">
             🛡️ Inspect Evac
           </button>
         </td>

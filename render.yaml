@@ -1,10 +1,23 @@
 services:
   - type: web
     name: skyguard-ai
-    runtime: static
-    buildCommand: echo "static site"
-    staticPublishPath: .
+    runtime: python
+    buildCommand: echo "Deploying SkyGuard AI Mission Control"
+    startCommand: python server.py
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
     headers:
       - path: /*
-        name: Cache-Control
-        value: no-cache
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
