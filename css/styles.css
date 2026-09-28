@@ -585,6 +585,8 @@ html[data-theme="light"] .nav-item.active {
 .view-content {
   display: none;
   padding: 24px 28px 70px 28px;
+  max-width: 100%;
+  overflow-x: clip;
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -600,9 +602,15 @@ html[data-theme="light"] .nav-item.active {
 /* KPI Cards Grid */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
   margin-bottom: 22px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.kpi-grid > .card {
+  min-width: 0;
 }
 
 .card {
@@ -614,6 +622,7 @@ html[data-theme="light"] .nav-item.active {
   box-shadow: var(--shadow-card);
   position: relative;
   overflow: hidden;
+  max-width: 100%;
   transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
 }
 
@@ -712,7 +721,14 @@ html[data-theme="light"] .nav-item.active {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 14px;
+}
+
+.map-card-head > div:first-child {
+  flex: 1 1 240px;
+  min-width: 0;
 }
 
 .card-title {
@@ -2273,17 +2289,20 @@ html[data-theme="light"] .nav-item.active {
   border-radius: 20px;
   padding: 3px;
   gap: 3px;
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .layer-pill {
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: 14px;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.2s ease;
 }
 
@@ -2301,8 +2320,16 @@ html[data-theme="light"] .nav-item.active {
 /* Disaster Ops Grid */
 .disaster-ops-grid {
   display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
   gap: 20px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.disaster-ops-left,
+.disaster-ops-right {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .active-evac-row {
@@ -2774,8 +2801,8 @@ html[data-theme="light"] .nav-item.active {
     max-width: 125px;
   }
   .disaster-ops-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    grid-template-columns: 1fr;
+    gap: 18px;
   }
 }
 
