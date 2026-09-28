@@ -31,8 +31,11 @@
     <div class="sky-atmosphere" id="skyAtmosphere" aria-hidden="true"></div>
 
     <div class="app-container">
+      <!-- Mobile Sidebar Backdrop Overlay -->
+      <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
       <!-- SIDEBAR -->
-      <aside class="sidebar">
+      <aside class="sidebar" id="appSidebar">
         <div class="brand-section">
           <div class="brand-logo">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="brand-svg">
@@ -46,6 +49,7 @@
             <h1>SkyGuard AI</h1>
             <p>SIH 2026 &bull; Problem 26073</p>
           </div>
+          <button class="btn-icon sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close navigation menu" title="Close Menu">✕</button>
         </div>
 
         <nav class="nav-links">
@@ -97,6 +101,10 @@
         <!-- TOPBAR -->
         <header class="topbar">
           <div class="top-left">
+            <!-- Mobile Menu Toggle Button -->
+            <button class="btn-icon mobile-menu-btn" id="sidebarToggleBtn" aria-label="Toggle navigation menu" title="Open Navigation Menu">
+              <span class="menu-icon">☰</span>
+            </button>
             <div class="live-indicator">
               <span class="pulse-dot"></span>
               <span id="streamStatusText">LIVE INGESTION</span>
@@ -744,7 +752,7 @@
                   </div>
                 </div>
 
-                <div class="table-wrap" style="max-height: 290px; overflow-y: auto;">
+                <div class="table-wrap data-table-wrap" style="max-height: 290px; overflow-x: auto; overflow-y: auto;">
                   <table class="data-table">
                     <thead>
                       <tr>
@@ -983,21 +991,23 @@
 
             <!-- Forensic Sensor Inspection Table -->
             <div class="dossier-section-title">1. Multi-Sensor Forensic Verification Matrix (WMO-No. 8 Standards)</div>
-            <table class="dossier-table">
-              <thead>
-                <tr>
-                  <th>Sensor Subsystem</th>
-                  <th>Observed Value</th>
-                  <th>WMO Tolerance Band</th>
-                  <th>Buddy Consensus Departure</th>
-                  <th>QC Flag</th>
-                  <th>Quarantine Status</th>
-                </tr>
-              </thead>
-              <tbody id="dossierTableBody">
-                <!-- Populated via JS -->
-              </tbody>
-            </table>
+            <div class="table-responsive data-table-wrap">
+              <table class="dossier-table">
+                <thead>
+                  <tr>
+                    <th>Sensor Subsystem</th>
+                    <th>Observed Value</th>
+                    <th>WMO Tolerance Band</th>
+                    <th>Buddy Consensus Departure</th>
+                    <th>QC Flag</th>
+                    <th>Quarantine Status</th>
+                  </tr>
+                </thead>
+                <tbody id="dossierTableBody">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
 
             <!-- Explainable AI Mathematical Proof -->
             <div class="dossier-section-title" style="margin-top: 24px;">2. Explainable AI (XAI) Mathematical Proof &amp; Spatial Consensus</div>

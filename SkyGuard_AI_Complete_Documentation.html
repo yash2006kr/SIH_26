@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SkyGuard AI - Complete System Overview & Technical Documentation</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 18mm 20mm 18mm;
+  }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #1e293b;
+    line-height: 1.6;
+    font-size: 11pt;
+    margin: 0;
+    padding: 0;
+  }
+  .header-card {
+    background: #0f172a;
+    color: #f8fafc;
+    padding: 24px 28px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    border-left: 6px solid #38bdf8;
+  }
+  .header-card h1 {
+    color: #38bdf8;
+    margin: 0 0 6px 0;
+    font-size: 22pt;
+    font-weight: 700;
+  }
+  .header-card .subtitle {
+    font-size: 13pt;
+    color: #94a3b8;
+    margin: 0 0 12px 0;
+  }
+  .meta-badges {
+    display: table;
+    width: 100%;
+    margin-top: 10px;
+  }
+  .meta-badge {
+    display: table-cell;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 6px 12px;
+    font-size: 9.5pt;
+    color: #e2e8f0;
+    border-radius: 4px;
+    margin-right: 8px;
+  }
+  h2 {
+    color: #0369a1;
+    font-size: 14pt;
+    border-bottom: 2px solid #e0f2fe;
+    padding-bottom: 5px;
+    margin-top: 24px;
+    margin-bottom: 12px;
+  }
+  h3 {
+    color: #0f172a;
+    font-size: 12pt;
+    margin-top: 16px;
+    margin-bottom: 6px;
+  }
+  p {
+    margin: 0 0 10px 0;
+    text-align: justify;
+  }
+  ul, ol {
+    margin: 0 0 12px 0;
+    padding-left: 22px;
+  }
+  li {
+    margin-bottom: 4px;
+  }
+  .callout-box {
+    background: #f0f9ff;
+    border-left: 4px solid #0284c7;
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    margin: 14px 0;
+    font-size: 10.5pt;
+  }
+  .callout-box strong {
+    color: #0369a1;
+  }
+  .alert-box {
+    background: #fef2f2;
+    border-left: 4px solid #ef4444;
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    margin: 14px 0;
+    font-size: 10.5pt;
+  }
+  .alert-box strong {
+    color: #b91c1c;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 10pt;
+  }
+  th {
+    background: #0f172a;
+    color: #ffffff;
+    text-align: left;
+    padding: 8px 10px;
+    border: 1px solid #334155;
+    font-weight: 600;
+  }
+  td {
+    padding: 7px 10px;
+    border: 1px solid #cbd5e1;
+    vertical-align: top;
+  }
+  tr:nth-child(even) {
+    background: #f8fafc;
+  }
+  .tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 8.5pt;
+    font-weight: 600;
+  }
+  .tag-green { background: #dcfce7; color: #15803d; }
+  .tag-red { background: #fee2e2; color: #b91c1c; }
+  .tag-blue { background: #e0f2fe; color: #0369a1; }
+  .tag-amber { background: #fef3c7; color: #b45309; }
+  .footer {
+    margin-top: 30px;
+    border-top: 1px solid #cbd5e1;
+    padding-top: 10px;
+    font-size: 9pt;
+    color: #64748b;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="header-card">
+  <h1>SkyGuard AI &bull; Executive System Architecture &amp; Feature Dossier</h1>
+  <div class="subtitle">Autonomous Meteorological Quality Control, Anomaly Discrimination &amp; Tactical Evacuation Platform</div>
+  <table class="meta-badges" style="border: none; background: transparent; margin: 0;">
+    <tr style="background: transparent;">
+      <td style="border: none; padding: 4px 6px; color: #cbd5e1;"><b>Initiative:</b> Smart India Hackathon 2026</td>
+      <td style="border: none; padding: 4px 6px; color: #cbd5e1;"><b>Problem ID:</b> 26073 (Disaster Management)</td>
+      <td style="border: none; padding: 4px 6px; color: #cbd5e1;"><b>Team:</b> AI Avengers</td>
+      <td style="border: none; padding: 4px 6px; color: #cbd5e1;"><b>Authority:</b> MoES / IMD AWS Grid</td>
+    </tr>
+  </table>
+</div>
+
+<h2>1. Executive Summary &amp; Core Problem Statement</h2>
+<p>
+Across India's national grid of <strong>Automatic Weather Stations (AWS)</strong> operated by the <strong>India Meteorological Department (IMD)</strong>, State Disaster Management Authorities (SDMAs), and agricultural departments, field sensors endure harsh environmental stressors: monsoonal flash floods, coastal salt incrustation, extreme summer heatwaves, and physical debris.
+</p>
+<p>
+This environment introduces a frequent and critical operational failure mode: <strong>The Sensor Fault vs. Genuine Extreme Weather Dilemma</strong>. When an isolated surface sensor suddenly transmits an extreme anomaly (e.g., a 55&deg;C heat spike or a -15 hPa pressure plummet), traditional rule-based threshold systems fail to determine if:
+</p>
+<ul>
+  <li><strong>Scenario A (Hardware Malfunction):</strong> An open circuit on a PT100 RTD temperature probe, a stuck ADC register, a desiccated capacitive polymer hygrometer, or a spider web in a tipping-bucket rain gauge.</li>
+  <li><strong>Scenario B (Genuine Extreme Disaster):</strong> A real mesoscale convective microburst, squall line, cloudburst, cyclonic landfall, or catastrophic flash flood.</li>
+</ul>
+
+<div class="callout-box">
+  <strong>The SkyGuard AI Solution:</strong> SkyGuard AI solves this challenge through a multi-tier physics-grounded AI engine. It continuously evaluates thermodynamic consistency (Clausius-Clapeyron relations), spatial peer consensus (K-Nearest Neighbors buddy networks), and temporal rate-of-change limits. It automatically quarantines corrupted telemetry from Numerical Weather Prediction (NWP) model feeds, substitutes mathematically imputed values via Inverse-Distance Weighting (IDW), generates WMO-No. 8 Standard Operating Procedures (SOPs), and dispatches predictive disaster evacuations.
+</div>
+
+<h2>2. High-Level Technical Architecture</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 25%;">Subsystem Layer</th>
+      <th style="width: 35%;">Technologies &amp; Protocols</th>
+      <th style="width: 40%;">Primary Operational Responsibilities</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Frontend Mission Control</strong></td>
+      <td>HTML5, Modern CSS Variables, Modular Vanilla JS (ES Modules), Chart.js 4.4, Leaflet GIS 1.9</td>
+      <td>Real-time dashboard, high-definition satellite/topo map, sensor health radar, batch CSV audit workbench, tactical evacuation routing UI, interactive copilot drawer.</td>
+    </tr>
+    <tr>
+      <td><strong>Secure Server Proxy</strong></td>
+      <td>Python HTTP Server (<code>server.py</code>), Vercel Serverless Function (<code>api/chat.js</code>)</td>
+      <td>Keeps private API keys safely on the server, encloses filesystem in a strict directory jail, blocks path traversal and dotfiles, enforces 20 req/min sliding-window IP rate limiting.</td>
+    </tr>
+    <tr>
+      <td><strong>Authentication &amp; Access Control</strong></td>
+      <td>HMAC-SHA256 Signed Session Tokens, Bearer Token Validation</td>
+      <td>Authorizes IMD/SDMA duty officers, secures privileged LLM intelligence pipelines, prevents unauthorized quota drain.</td>
+    </tr>
+    <tr>
+      <td><strong>AI Intelligence Engine</strong></td>
+      <td>Google Gemini 2.5 Flash API + SkyGuard Offline Physics Diagnostic Engine</td>
+      <td>Context-aware conversational diagnostics, sensor failure root-cause analysis, disaster management SOPs, executive briefings.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>3. Comprehensive Breakdown of System Modules</h2>
+
+<h3>Module 1: Global Command Bar &amp; Operator Access Control</h3>
+<ul>
+  <li><strong>Live Ingestion Stream Controller:</strong> Real-time streaming status with single-click pause/resume capability to freeze live frames for forensic review.</li>
+  <li><strong>AWS Node Switcher:</strong> Instant switching between high-risk national AWS nodes (Bangalore IMD, Sakleshpur Western Ghats, Chennai Coastal, Mumbai Santacruz, Leh High-Altitude, Cherrapunji).</li>
+  <li><strong>Stream Data Provider:</strong> Toggle between live <strong>Open-Meteo REST API feeds</strong> and the high-fidelity <strong>Department Telemetry Simulator</strong>.</li>
+  <li><strong>Network Operational Trust Gauge:</strong> Aggregate index reflecting instantaneous data credibility and thermodynamic validity across all active sensors.</li>
+  <li><strong>Operator Access Control (HMAC Auth):</strong> Session authentication modal for authorized personnel with timing-safe HMAC validation.</li>
+  <li><strong>Emergency Global Alert Ribbon:</strong> Automatically appears at the top of the interface whenever high-risk natural hazard precursors are detected.</li>
+</ul>
+
+<h3>Module 2: Network Command Center (Dashboard View)</h3>
+<ul>
+  <li><strong>Real-Time Atmospheric KPIs:</strong> High-precision readouts for Dry-Bulb Temperature (&deg;C), Relative Humidity (%), Barometric Pressure (hPa), Wind Speed &amp; Gusts (km/h), Rainfall Accumulation (mm), and Dew Point Depression.</li>
+  <li><strong>5-Tier AI Quality Control Verdicts:</strong>
+    <ul>
+      <li><span class="tag tag-green">Flag G (NORMAL)</span>: Nominal operation within standard physical tolerance envelopes.</li>
+      <li><span class="tag tag-red">Flag F (FAULT)</span>: Instrumentation fault detected and quarantined from downstream NWP models.</li>
+      <li><span class="tag tag-blue">Flag S (EVENT)</span>: Genuine extreme weather event corroborated by regional spatial buddy stations.</li>
+      <li><span class="tag tag-amber">Flag W (WATCH)</span>: Sensor degradation or progressive calibration drift identified.</li>
+    </ul>
+  </li>
+  <li><strong>Virtual Sensor Imputation Widget:</strong> Reconstructs real-time substitute values using Inverse-Distance Spatial Weighting (IDW) from peer stations when a reading is quarantined.</li>
+  <li><strong>Live Alerts Feed:</strong> Chronological audit table detailing time, station ID, QC flag, severity level, and plain-language root-cause reasoning.</li>
+  <li><strong>Thermodynamic Consistency Chart:</strong> Interactive dual-axis curve plotting Temperature vs. Dew Point to enforce Clausius-Clapeyron limits.</li>
+</ul>
+
+<h3>Module 3: Spatial AWS Network Map View</h3>
+<ul>
+  <li><strong>High-Definition Multi-Layer Basemaps:</strong> Switch between <strong>Esri World High-Res Satellite Imagery</strong>, <strong>OpenTopoMap Topographic Contours</strong>, <strong>CartoDB Dark Matter</strong>, and <strong>Standard Street Maps</strong>.</li>
+  <li><strong>Dynamic Sensor Health Markers:</strong> Real-time color-coded station markers pulsing according to AI health state.</li>
+  <li><strong>Spatial Peer Consensus Interconnects:</strong> Visual geometric vectors illustrating active K-Nearest Neighbor (KNN) correlation links between target stations and regional peers.</li>
+  <li><strong>Interactive Station Dossiers:</strong> Interactive popups displaying coordinates, altitude, sensor models, live telemetry, and quick-action links.</li>
+</ul>
+
+<h3>Module 4: Telemetry &amp; Multi-Parameter Analytics</h3>
+<ul>
+  <li><strong>Multi-Parameter Time-Series Chart:</strong> 24-hour synoptic curves synchronizing Temperature, Relative Humidity, Pressure, Wind, and Rain.</li>
+  <li><strong>Raw vs. Imputed Comparative Analysis:</strong> Direct visual overlay contrasting corrupted raw telemetry against the AI-reconstructed Virtual Sensor curve.</li>
+  <li><strong>Spatial Buddy Comparison:</strong> Evaluates target station departures against regional consensus curves.</li>
+  <li><strong>Transducer Health Radar:</strong> 5-axis radar chart showing individual health scores across the RTD probe, capacitive hygrometer, barometer, anemometer, and ESP32 telemetry bus.</li>
+</ul>
+
+<h3>Module 5: Simulation &amp; Department Ingestion Workbench</h3>
+<ul>
+  <li><strong>Interactive Hardware Fault &amp; Extreme Weather Injection:</strong>
+    <ul>
+      <li><em>55&deg;C Electrical Spike:</em> Simulates open RTD circuit / voltage transient.</li>
+      <li><em>Frozen Sensor Signal:</em> Simulates stuck ADC register lock on a capacitive hygrometer.</li>
+      <li><em>-14 hPa Barometric Drop:</em> Simulates pressure port dust blockage without weather correlation.</li>
+      <li><em>ESP32 Uplink Dropout:</em> Simulates telemetry comms timeout and dropped packets.</li>
+      <li><em>Calibration Drift:</em> Simulates gradual thermal sensor degradation over time.</li>
+      <li><em>Severe Regional Thunderstorm:</em> Simulates real mesoscale storm across multiple peer stations.</li>
+    </ul>
+  </li>
+  <li><strong>Department Batch CSV/JSON Ingestion Engine:</strong> Ingests thousands of department historical AWS telemetry records with a built-in stress-test data generator.</li>
+  <li><strong>Audited CSV Export:</strong> Exports fully audited CSV files with imputed values and WMO QC flags, protected against CSV Formula Injection (CWE-1236).</li>
+</ul>
+
+<h3>Module 6: Sensor Health Matrix &amp; WMO-No. 8 Standard Operating Procedures (SOP)</h3>
+<ul>
+  <li><strong>Component-Level Diagnostics:</strong> Real-time health percentages, calibration dates, and model numbers for PT100 RTD probes, capacitive humidity chips, Vaisala barometers, and ultrasonic anemometers.</li>
+  <li><strong>Dynamic WMO-No. 8 SOP Generator:</strong> Automatically prescribes certified engineering maintenance procedures:
+    <ul>
+      <li>2-point salt chamber calibration (LiCl 11.3% RH and NaCl 75.3% RH) for hygrometer drift.</li>
+      <li>Radiation shield cleaning and aspiration filter checks for dust/salt blockages.</li>
+      <li>Lead-wire resistance balancing and excitation voltage verification for RTD sensors.</li>
+    </ul>
+  </li>
+</ul>
+
+<h3>Module 7: Predictive Disaster Ops &amp; Tactical Evacuation Routing</h3>
+<div class="alert-box">
+  <strong>Predictive Early Warning Horizon:</strong> Detects severe natural hazard precursors <strong>6 to 72 hours ahead of catastrophic impact</strong>.
+</div>
+<ul>
+  <li><strong>Supported Disaster Hazards:</strong>
+    <ul>
+      <li><strong>Landslides:</strong> Tracks antecedent 72-hour rainfall saturation, slope steepness, and soil moisture thresholds (e.g., Western Ghats / Sakleshpur corridor).</li>
+      <li><strong>Flash Floods:</strong> Detects precipitation rate spikes exceeding hydrological drainage capacity.</li>
+      <li><strong>Cyclonic Squalls:</strong> Detects barometric plunge rates exceeding -3 hPa/hr coupled with severe squall gusts.</li>
+      <li><strong>Severe Heatwaves:</strong> Flags prolonged temperatures exceeding +4.5&deg;C above seasonal normal.</li>
+    </ul>
+  </li>
+  <li><strong>Tactical Evacuation Corridor Engine:</strong> Computes the shortest and safest evacuation route from danger zones to certified relief shelters, avoiding floodplains, unstable slopes, and surge zones.</li>
+  <li><strong>Multi-Agency Emergency Broadcast Dispatcher:</strong> Simulates one-click emergency cell broadcast transmission across SDMA, NDRF, District Police, and public citizen SMS alerts.</li>
+</ul>
+
+<h3>Module 8: Official Forensic Quality Control Audit Dossier</h3>
+<ul>
+  <li><strong>Government Audit Dossier:</strong> Generates an official, publication-ready forensic quality certification report for IMD / MoES records.</li>
+  <li><strong>Mathematical Proof Box:</strong> Formal proof validating Clausius-Clapeyron thermodynamic consistency, spatial buddy consensus, and IDW imputation trails.</li>
+  <li><strong>Executive Print Preview:</strong> Built-in print CSS formatted for official sign-off and archiving.</li>
+</ul>
+
+<h3>Module 9: SkyGuard AI Weather Copilot</h3>
+<ul>
+  <li><strong>Interactive Floating Robot:</strong> Animated desktop robot companion that expands into a conversational AI drawer.</li>
+  <li><strong>Google Gemini 2.5 Flash Engine:</strong> Proxies multi-turn queries through the secure backend to answer meteorological, hardware, electronic, mathematical, and disaster response questions.</li>
+  <li><strong>Zero-Key Offline AI Fallback:</strong> Automatically falls back to an internal offline rule-based diagnostic engine if the backend or internet connection is unavailable.</li>
+</ul>
+
+<h3>Module 10: Production Security Hardening &amp; Zero-Leakage Architecture</h3>
+<ul>
+  <li><strong>Operator Authentication Layer:</strong> HMAC-SHA256 signed session tokens with secure verification protecting privileged endpoints.</li>
+  <li><strong>Sliding-Window IP Rate Limiter:</strong> Enforces a 20 request / 60-second limit on <code>/api/chat</code> to prevent quota exhaustion and DoS attacks.</li>
+  <li><strong>Directory Traversal Defense:</strong> Prevents URL-encoded traversal (<code>%2e%2e</code>, <code>%2eenv</code>) and enforces root directory path jailing.</li>
+  <li><strong>Zero Secret Leakage:</strong> Complete redaction of API keys from frontend and configuration health checks (<code>/api/config</code>).</li>
+  <li><strong>XSS &amp; CSV Formula Sanitization:</strong> Universal HTML escaping on all dynamic table elements and single-quote escaping on formula trigger characters (<code>=</code>, <code>+</code>, <code>-</code>, <code>@</code>).</li>
+</ul>
+
+<div class="footer">
+  SkyGuard AI &bull; Smart India Hackathon 2026 &bull; Problem Statement 26073 &bull; Team AI Avengers &bull; Certified Meteorological Systems Documentation
+</div>
+
+</body>
+</html>

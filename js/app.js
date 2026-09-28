@@ -198,6 +198,50 @@ function initNavigation() {
     audit: "Government Meteorological QC Audit Dossier"
   };
 
+  // Mobile Sidebar Toggle and Drawer controls
+  const sidebar = document.getElementById("appSidebar");
+  const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
+  const sidebarCloseBtn = document.getElementById("sidebarCloseBtn");
+  const sidebarBackdrop = document.getElementById("sidebarBackdrop");
+
+  function openSidebar() {
+    sidebar?.classList.add("open");
+    sidebarBackdrop?.classList.add("active");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeSidebar() {
+    sidebar?.classList.remove("open");
+    sidebarBackdrop?.classList.remove("active");
+    document.body.style.overflow = "";
+  }
+
+  sidebarToggleBtn?.addEventListener("click", () => {
+    if (sidebar?.classList.contains("open")) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+  });
+
+  sidebarCloseBtn?.addEventListener("click", closeSidebar);
+  sidebarBackdrop?.addEventListener("click", closeSidebar);
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && sidebar?.classList.contains("open")) {
+      closeSidebar();
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 1024 && sidebar?.classList.contains("open")) {
+      closeSidebar();
+    }
+    if (miniMap) miniMap.invalidateSize();
+    if (fullMap) fullMap.invalidateSize();
+    if (evacMap) evacMap.invalidateSize();
+  });
+
   navItems.forEach((btn) => {
     btn.addEventListener("click", () => {
       const targetView = btn.getAttribute("data-view");
@@ -213,6 +257,11 @@ function initNavigation() {
 
       if (titleText && viewTitles[targetView]) {
         titleText.textContent = viewTitles[targetView];
+      }
+
+      // On mobile/tablets, auto-close sidebar drawer upon selecting a view
+      if (window.innerWidth <= 1024) {
+        closeSidebar();
       }
 
       // Invalidate map sizes if map views become visible
