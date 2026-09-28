@@ -101,7 +101,12 @@
         <!-- TOPBAR -->
         <header class="topbar">
           <div class="top-left">
-            <!-- Mobile Menu Toggle Button -->
+            <!-- Mobile Features Navigation Button (Strictly for mobile viewport) -->
+            <button class="mobile-features-btn" id="mobileFeaturesBtn" aria-label="Open Features Navigation" title="Show Features Menu">
+              <span class="features-btn-icon">⚡</span>
+              <span class="features-btn-text">Features</span>
+            </button>
+            <!-- Mobile/Tablet Hamburger Menu Toggle Button -->
             <button class="btn-icon mobile-menu-btn" id="sidebarToggleBtn" aria-label="Toggle navigation menu" title="Open Navigation Menu">
               <span class="menu-icon">☰</span>
             </button>
@@ -154,11 +159,13 @@
         <!-- EMERGENCY GLOBAL ALERT RIBBON -->
         <div class="emergency-ribbon" id="emergencyRibbon" style="display: none;">
           <div class="ribbon-content">
-            <span class="ribbon-siren">🚨</span>
-            <span class="ribbon-title">DISASTER EARLY WARNING ACTIVE:</span>
-            <span class="ribbon-message" id="ribbonMessage">High-risk precursor detected. Evacuation corridor standby.</span>
+            <span class="ribbon-siren" aria-hidden="true">🚨</span>
+            <div class="ribbon-text-wrap">
+              <div class="ribbon-title-badge">DISASTER EARLY WARNING ACTIVE</div>
+              <div class="ribbon-message" id="ribbonMessage">High-risk precursor detected. Evacuation corridor standby.</div>
+            </div>
           </div>
-          <button class="btn btn-danger btn-compact" id="ribbonViewBtn">
+          <button class="btn btn-danger btn-compact ribbon-action-btn" id="ribbonViewBtn">
             <span>🛡️ View Evacuation Route &amp; Dispatch Alert</span>
           </button>
         </div>

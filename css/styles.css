@@ -2083,18 +2083,45 @@ html[data-theme="light"] .nav-item.active {
 .ribbon-content {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 13.5px;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
 }
 
 .ribbon-siren {
-  font-size: 18px;
+  font-size: 20px;
+  line-height: 1;
   animation: sirenWiggle 0.8s infinite ease-in-out;
+  flex-shrink: 0;
 }
 
 @keyframes sirenWiggle {
   0%, 100% { transform: rotate(-8deg); }
   50% { transform: rotate(8deg); }
+}
+
+.ribbon-text-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.ribbon-title-badge {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #ffffff;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .ribbon-title {
@@ -2104,8 +2131,18 @@ html[data-theme="light"] .nav-item.active {
 }
 
 .ribbon-message {
-  font-weight: 500;
-  opacity: 0.95;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #ffffff;
+  word-break: break-word;
+}
+
+.ribbon-action-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* Disaster Top Banner */
@@ -2460,7 +2497,7 @@ html[data-theme="light"] .nav-item.active {
    RESPONSIVE LAYOUT & MOBILE SYSTEM OVERHAUL
    ---------------------------------------------------- */
 
-/* Mobile Menu Toggle Button */
+/* Mobile Menu Toggle Button (Tablet) */
 .mobile-menu-btn {
   display: none;
   align-items: center;
@@ -2481,6 +2518,47 @@ html[data-theme="light"] .nav-item.active {
   background: rgba(14, 165, 233, 0.15);
   border-color: var(--c-sky);
   color: var(--c-sky);
+}
+
+/* Mobile Features Button (Strictly Mobile Interface) */
+.mobile-features-btn {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(37, 99, 235, 0.3));
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  color: #38bdf8;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mobile-features-btn:hover,
+.mobile-features-btn:active {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.35), rgba(37, 99, 235, 0.45));
+  border-color: #7dd3fc;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);
+}
+
+.features-btn-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.features-btn-text {
+  font-size: 11.5px;
+  letter-spacing: 0.4px;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 /* Sidebar Close Button */
@@ -2587,15 +2665,67 @@ html[data-theme="light"] .nav-item.active {
   .dossier-grid-summary {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  /* Emergency Ribbon - Vertical Responsive Stacking for All Tablets & Mobiles */
+  .emergency-ribbon {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 12px 16px !important;
+  }
+
+  .ribbon-content {
+    width: 100% !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .ribbon-text-wrap {
+    flex: 1 !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+
+  .ribbon-title-badge {
+    align-self: flex-start !important;
+    font-size: 10.5px !important;
+    padding: 2px 7px !important;
+  }
+
+  .ribbon-message {
+    font-size: 12.5px !important;
+    line-height: 1.45 !important;
+    word-break: break-word !important;
+    opacity: 0.96 !important;
+  }
+
+  #ribbonViewBtn,
+  .ribbon-action-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 10px 14px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    white-space: normal !important;
+    text-align: center !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+  }
 }
 
 /* 3. Tablets Portrait & Small Laptops (max-width: 1024px) */
 @media (max-width: 1024px) {
   .mobile-menu-btn {
-    display: inline-flex;
+    display: inline-flex !important;
+  }
+  .mobile-features-btn {
+    display: none !important;
   }
   .sidebar-close-btn {
-    display: inline-flex;
+    display: inline-flex !important;
   }
 
   /* Slide-out Sidebar Drawer */
@@ -2645,38 +2775,81 @@ html[data-theme="light"] .nav-item.active {
 /* 4. Large Mobiles & Phablets (max-width: 768px) */
 @media (max-width: 768px) {
   .topbar {
-    height: auto;
-    min-height: 56px;
-    padding: 8px 12px;
-    gap: 8px;
+    height: auto !important;
+    min-height: 52px !important;
+    padding: 8px 10px !important;
+    gap: 8px !important;
+    justify-content: space-between !important;
   }
 
   .top-left {
-    gap: 8px;
+    flex: 0 0 auto !important;
+    min-width: auto !important;
+    overflow: visible !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
   }
 
-  .page-heading {
-    max-width: 160px;
-    font-size: 13.5px;
+  /* Show dedicated Mobile Features Button strictly on mobile */
+  .mobile-features-btn {
+    display: inline-flex !important;
+  }
+
+  /* Hide tablet hamburger on mobile view so only the prominent Features button is shown */
+  .mobile-menu-btn {
+    display: none !important;
+  }
+
+  .page-heading,
+  .live-indicator,
+  .top-title-divider,
+  .picker-label,
+  .trust-title {
+    display: none !important;
   }
 
   .top-actions {
-    gap: 6px;
+    flex: 1 1 auto !important;
+    justify-content: flex-end !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+
+  .top-actions::-webkit-scrollbar {
+    display: none;
   }
 
   .station-select {
-    max-width: 120px;
-    padding: 6px 20px 6px 8px;
-    font-size: 11.5px;
+    max-width: 110px !important;
+    padding: 5px 18px 5px 6px !important;
+    font-size: 11px !important;
   }
 
   .station-select.source-select {
-    display: none; /* Secondary stream control accessible via Simulation view */
+    display: none !important; /* Secondary stream control accessible via Simulation view */
+  }
+
+  #pauseStreamBtn {
+    display: none !important;
   }
 
   .trust-gauge-mini {
-    padding: 4px 8px;
-    font-size: 11.5px;
+    padding: 4px 7px !important;
+    font-size: 11px !important;
+  }
+
+  #authBtn {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+
+  #themeToggleBtn {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 12px !important;
   }
 
   .view-content {
@@ -2709,15 +2882,7 @@ html[data-theme="light"] .nav-item.active {
 
   /* Emergency Ribbon */
   .emergency-ribbon {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    padding: 12px 14px;
-  }
-
-  #ribbonViewBtn {
-    width: 100%;
-    justify-content: center;
+    padding: 10px 12px !important;
   }
 
   /* Maps on Mobile */
@@ -2920,12 +3085,45 @@ html[data-theme="light"] .nav-item.active {
 
 /* 5. Small Phones (max-width: 480px) */
 @media (max-width: 480px) {
+  .topbar {
+    padding: 6px 8px !important;
+    gap: 6px !important;
+  }
+
   .page-heading {
-    display: none; /* Hide heading, reliance on section titles and icons */
+    display: none !important; /* Hide heading, reliance on section titles and icons */
+  }
+
+  .mobile-features-btn {
+    padding: 0 9px !important;
+    height: 33px !important;
+  }
+
+  .features-btn-icon {
+    font-size: 13px !important;
+  }
+
+  .features-btn-text {
+    font-size: 11px !important;
   }
 
   .station-select {
-    max-width: 110px;
+    max-width: 95px !important;
+    font-size: 10.5px !important;
+    padding: 4px 16px 4px 5px !important;
+  }
+
+  #authBadgeText {
+    display: none !important; /* Icon-only auth button on narrow mobile screens */
+  }
+
+  #authBtn {
+    padding: 4px 6px !important;
+  }
+
+  .trust-gauge-mini {
+    padding: 3px 6px !important;
+    font-size: 10.5px !important;
   }
 
   .kpi-grid {

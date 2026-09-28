@@ -216,7 +216,17 @@ function initNavigation() {
     document.body.style.overflow = "";
   }
 
+  const mobileFeaturesBtn = document.getElementById("mobileFeaturesBtn");
+
   sidebarToggleBtn?.addEventListener("click", () => {
+    if (sidebar?.classList.contains("open")) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+  });
+
+  mobileFeaturesBtn?.addEventListener("click", () => {
     if (sidebar?.classList.contains("open")) {
       closeSidebar();
     } else {
