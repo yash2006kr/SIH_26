@@ -910,6 +910,25 @@
                     </ul>
                   </div>
 
+                  <!-- Turn-by-Turn Safe Road Navigation Guide -->
+                  <div class="evac-navigation-box" id="evacNavigationBox">
+                    <div class="nav-guide-head">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 16px;">🧭</span>
+                        <span class="avoid-title" style="margin-bottom: 0;">Turn-by-Turn Road Navigation &amp; Routing</span>
+                        <span class="nav-route-badge" id="evacRoutingBadge">OSRM Highway Routing</span>
+                      </div>
+                      <a href="#" class="btn btn-primary btn-compact" id="openGpsNavBtn" target="_blank" rel="noopener noreferrer" title="Open Turn-by-Turn GPS Navigation in Google Maps">
+                        <span>📍 Open Live GPS Navigation</span>
+                      </a>
+                    </div>
+                    <div class="nav-steps-wrap" id="evacNavStepsList">
+                      <div class="nav-step-item" style="color: var(--text-muted);">
+                        <span>Calculating real-world road trajectory &amp; turn-by-turn maneuvers...</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- Emergency Direct Call Bar -->
                   <div class="emergency-call-bar">
                     <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Direct Emergency Response Hotlines:</span>

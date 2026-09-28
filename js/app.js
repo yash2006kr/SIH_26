@@ -367,6 +367,10 @@ function getMapTileConfigs(layerKey = currentMapLayer, theme = "dark") {
         options: { maxZoom: 19, attribution: "Esri, Maxar, Earthstar Geographics" }
       },
       {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+        options: { maxZoom: 19 }
+      },
+      {
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
         options: { maxZoom: 19 }
       }
@@ -1994,14 +1998,100 @@ function renderDisasterTable(reports) {
   });
 }
 
+// OSRM Real Road Route Cache
+const evacRouteCache = new Map();
+
+async function fetchRoadRoute(originLat, originLng, destLat, destLng) {
+  const cacheKey = `${originLat.toFixed(4)},${originLng.toFixed(4)}->${destLat.toFixed(4)},${destLng.toFixed(4)}`;
+  if (evacRouteCache.has(cacheKey)) {
+    return evacRouteCache.get(cacheKey);
+  }
+
+  const url = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 4500);
+
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.code === "Ok" && data.routes && data.routes.length > 0) {
+      const r = data.routes[0];
+      const latLngs = r.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+      const steps = [];
+      if (r.legs && r.legs[0] && r.legs[0].steps) {
+        r.legs[0].steps.forEach((s) => {
+          const type = s.maneuver ? s.maneuver.type : "turn";
+          const modifier = s.maneuver ? (s.maneuver.modifier || "") : "";
+          const name = s.name ? s.name.trim() : "";
+          const distStr = s.distance >= 1000 ? `${(s.distance / 1000).toFixed(1)} km` : `${Math.round(s.distance)} m`;
+
+          let icon = "➡️";
+          let label = "";
+
+          if (type === "depart") {
+            icon = "🚗";
+            label = name ? `Depart via ${name}` : "Depart from station hazard perimeter";
+          } else if (type === "arrive") {
+            icon = "🛡️";
+            label = "Arrive at Designated Safe Haven Shelter";
+          } else if (modifier.includes("left")) {
+            icon = modifier === "sharp left" ? "↙️" : "⬅️";
+            label = name ? `Turn left onto ${name}` : "Turn left";
+          } else if (modifier.includes("right")) {
+            icon = modifier === "sharp right" ? "↘️" : "➡️";
+            label = name ? `Turn right onto ${name}` : "Turn right";
+          } else if (modifier.includes("straight") || type === "continue") {
+            icon = "⬆️";
+            label = name ? `Continue straight onto ${name}` : "Continue straight";
+          } else if (type.includes("roundabout") || type.includes("rotary")) {
+            icon = "🔄";
+            label = name ? `Take roundabout onto ${name}` : "Enter roundabout";
+          } else if (type.includes("merge") || type.includes("fork")) {
+            icon = "🔀";
+            label = name ? `Merge onto ${name}` : "Merge onto roadway";
+          } else {
+            label = name ? `Proceed onto ${name}` : "Follow safe evacuation corridor";
+          }
+
+          steps.push({
+            icon,
+            instruction: label,
+            roadName: name || "Connecting Roadway",
+            distance: distStr,
+            location: s.maneuver?.location ? [s.maneuver.location[1], s.maneuver.location[0]] : null
+          });
+        });
+      }
+
+      const result = {
+        latLngs,
+        distanceKm: (r.distance / 1000).toFixed(1),
+        durationMin: Math.max(1, Math.round(r.duration / 60)),
+        steps,
+        summary: r.legs[0]?.summary || ""
+      };
+      evacRouteCache.set(cacheKey, result);
+      return result;
+    }
+  } catch (err) {
+    console.warn("OSRM road routing unavailable, using designated fallback corridor:", err);
+  }
+  return null;
+}
+
+let activeRoadPolylines = [];
+
 function renderEvacuationRoute(stationId) {
   if (!evacMap || !evacLayersGroup) return;
 
   const plan = getEvacuationPlan(stationId);
   const st = getStationById(stationId);
 
-  // Clear previous layers
+  // Clear previous layers & polylines
   evacLayersGroup.clearLayers();
+  activeRoadPolylines = [];
 
   // 1. Hazard Impact Perimeter Circle (Pulsing Red)
   const bufferRadiusMeters = (plan.distanceKm * 0.75) * 1000;
@@ -2024,9 +2114,9 @@ function renderEvacuationRoute(stationId) {
   }).addTo(evacLayersGroup);
   originMarker.bindPopup(`
     <div style="font-family: sans-serif; font-size: 12.5px; min-width: 190px;">
-      <strong style="color: #f43f5e;">⚠️ Hazard Epicenter: ${st.name}</strong><br/>
-      <span>Elevation: ${st.elevation}m MSL</span><br/>
-      <span>Primary Hazard: <b>${plan.hazardPrimary}</b></span><br/>
+      <strong style="color: #f43f5e;">⚠️ Hazard Epicenter: ${escapeHtml(st.name)}</strong><br/>
+      <span>Elevation: ${escapeHtml(String(st.elevation))}m MSL</span><br/>
+      <span>Primary Hazard: <b>${escapeHtml(plan.hazardPrimary)}</b></span><br/>
       <small style="color: #64748b;">Evacuation corridor initiated from this node</small>
     </div>
   `);
@@ -2042,48 +2132,12 @@ function renderEvacuationRoute(stationId) {
   safeMarker.bindPopup(`
     <div style="font-family: sans-serif; font-size: 12.5px; min-width: 210px;">
       <strong style="color: #10b981;">🛡️ DESIGNATED SAFE HAVEN</strong><br/>
-      <b style="color: #0284c7;">${plan.safeZoneName}</b><br/>
-      <span>Safe Elevation: <b>${plan.safeZoneElev}m MSL</b> (+${plan.safeZoneElev - st.elevation}m gain)</span><br/>
-      <span>Shelter Capacity: <b>${plan.shelterCapacity}</b></span><br/>
+      <b style="color: #0284c7;">${escapeHtml(plan.safeZoneName)}</b><br/>
+      <span>Safe Elevation: <b>${escapeHtml(String(plan.safeZoneElev))}m MSL</b> (+${plan.safeZoneElev - st.elevation}m gain)</span><br/>
+      <span>Shelter Capacity: <b>${escapeHtml(plan.shelterCapacity)}</b></span><br/>
       <span>Medical &amp; Food Rations: READY</span>
     </div>
   `);
-
-  // 4. Safest Evacuation Corridor Polyline
-  // Underlying glow
-  L.polyline(plan.routeWaypoints, {
-    color: "rgba(16, 185, 129, 0.35)",
-    weight: 12,
-    lineCap: "round"
-  }).addTo(evacLayersGroup);
-
-  // Core dashed animated route
-  const routeLine = L.polyline(plan.routeWaypoints, {
-    color: "#10b981",
-    weight: 4.5,
-    dashArray: "8, 10",
-    lineCap: "round"
-  }).addTo(evacLayersGroup);
-  routeLine.bindTooltip(`<b>Evacuation Corridor</b>: ${plan.evacuationCorridor} (${plan.distanceKm} km)`, { sticky: true });
-
-  // 5. Intermediate Waypoint Markers
-  plan.routeWaypoints.forEach((wp, idx) => {
-    if (idx > 0 && idx < plan.routeWaypoints.length - 1) {
-      L.circleMarker(wp, {
-        radius: 5,
-        fillColor: "#38bdf8",
-        color: "#ffffff",
-        weight: 1.5,
-        fillOpacity: 0.9
-      }).addTo(evacLayersGroup).bindTooltip(`Checkpoint ${idx}: Safe Route Corridor`, { direction: "top" });
-    }
-  });
-
-  // Fit map view to route bounds
-  const bounds = L.latLngBounds(plan.routeWaypoints);
-  bounds.extend(L.latLng(plan.safeZoneCoords));
-  bounds.extend(L.latLng([st.lat, st.lng]));
-  evacMap.fitBounds(bounds, { padding: [50, 50], animate: true });
 
   // Update Logistics Panel DOM elements
   const safeNameEl = document.getElementById("evacSafeName");
@@ -2093,7 +2147,9 @@ function renderEvacuationRoute(stationId) {
   const capacityEl = document.getElementById("evacCapacity");
   const avoidListEl = document.getElementById("evacAvoidList");
   const smsBodyEl = document.getElementById("smsBroadcastText");
-  const smsMetaEl = document.getElementById("smsTargetMeta");
+  const routingBadge = document.getElementById("evacRoutingBadge");
+  const navStepsList = document.getElementById("evacNavStepsList");
+  const openGpsNavBtn = document.getElementById("openGpsNavBtn");
 
   if (safeNameEl) safeNameEl.textContent = plan.safeZoneName;
   if (safeElevEl) safeElevEl.textContent = `Elevation: ${plan.safeZoneElev}m MSL (+${plan.safeZoneElev - st.elevation}m safety elevation gain)`;
@@ -2101,8 +2157,17 @@ function renderEvacuationRoute(stationId) {
   if (corridorEl) corridorEl.textContent = `Via ${plan.evacuationCorridor}`;
   if (capacityEl) capacityEl.textContent = plan.shelterCapacity;
 
+  if (openGpsNavBtn) {
+    openGpsNavBtn.href = `https://www.google.com/maps/dir/?api=1&origin=${st.lat},${st.lng}&destination=${plan.safeZoneCoords[0]},${plan.safeZoneCoords[1]}&travelmode=driving`;
+  }
+
+  if (routingBadge) {
+    routingBadge.textContent = "🧭 Querying Real Road Network...";
+    routingBadge.style.color = "var(--c-sky)";
+  }
+
   if (avoidListEl && plan.riskZonesAvoided) {
-    avoidListEl.innerHTML = plan.riskZonesAvoided.map((z) => `<li>${z}</li>`).join("");
+    avoidListEl.innerHTML = plan.riskZonesAvoided.map((z) => `<li>${escapeHtml(z)}</li>`).join("");
   }
 
   // Update Hotline Numbers
@@ -2119,6 +2184,132 @@ function renderEvacuationRoute(stationId) {
   if (smsBodyEl) {
     smsBodyEl.textContent = `🚨 GOVT EMERGENCY BROADCAST [NDMA / ${st.state.toUpperCase()} SDMA]: Severe ${plan.hazardPrimary} precursor detected in ${st.city} perimeter. Pre-impact evacuation initiated. Proceed via ${plan.evacuationCorridor} directly to ${plan.safeZoneName}. Stay clear of low river crossings & steep slopes. Dial 112 for rapid rescue.`;
   }
+
+  // Initial provisional bounds
+  const provisionalBounds = L.latLngBounds([[st.lat, st.lng], plan.safeZoneCoords]);
+  evacMap.fitBounds(provisionalBounds, { padding: [60, 60], animate: true });
+
+  // 4. Fetch Exact Road Route & Turn-by-Turn Navigation from OSRM
+  fetchRoadRoute(st.lat, st.lng, plan.safeZoneCoords[0], plan.safeZoneCoords[1]).then((roadData) => {
+    // Clear any previous active road polylines
+    activeRoadPolylines.forEach((l) => evacLayersGroup.removeLayer(l));
+    activeRoadPolylines = [];
+
+    if (roadData && roadData.latLngs && roadData.latLngs.length > 0) {
+      // 1) Soft emerald road glow
+      const glowLine = L.polyline(roadData.latLngs, {
+        color: "rgba(16, 185, 129, 0.28)",
+        weight: 12,
+        lineCap: "round",
+        lineJoin: "round"
+      }).addTo(evacLayersGroup);
+
+      // 2) Core high-visibility road corridor
+      const coreLine = L.polyline(roadData.latLngs, {
+        color: "#10b981",
+        weight: 4.5,
+        lineCap: "round",
+        lineJoin: "round"
+      }).addTo(evacLayersGroup);
+
+      // 3) Animated directional navigation track
+      const dashLine = L.polyline(roadData.latLngs, {
+        color: "#ffffff",
+        weight: 2,
+        dashArray: "6, 14",
+        lineCap: "round"
+      }).addTo(evacLayersGroup);
+
+      coreLine.bindTooltip(`<b>Exact Road Evacuation Route</b>: ${escapeHtml(plan.evacuationCorridor)}<br/>Distance: <b>${roadData.distanceKm} km</b> &bull; Drive Time: <b>~${roadData.durationMin} mins</b>`, { sticky: true });
+
+      activeRoadPolylines = [glowLine, coreLine, dashLine];
+
+      // Update real road distance & transit duration
+      if (distEtaEl) {
+        distEtaEl.innerHTML = `${roadData.distanceKm} km &bull; ~${roadData.durationMin} mins transit`;
+      }
+      if (corridorEl && roadData.summary) {
+        corridorEl.textContent = `Via ${roadData.summary} / ${plan.evacuationCorridor}`;
+      }
+      if (routingBadge) {
+        routingBadge.textContent = `🛣️ Real Road Corridor (${roadData.distanceKm} km, ${roadData.latLngs.length} pts)`;
+        routingBadge.style.color = "var(--c-teal)";
+      }
+
+      // Populate Turn-by-Turn Maneuvers
+      if (navStepsList && roadData.steps && roadData.steps.length > 0) {
+        navStepsList.innerHTML = roadData.steps.map((s, idx) => `
+          <div class="nav-step-item" data-step-idx="${idx}" title="Click to inspect this turn on the road map">
+            <div class="nav-step-left">
+              <span class="nav-step-icon">${s.icon}</span>
+              <span class="nav-step-text"><b>Step ${idx + 1}:</b> ${escapeHtml(s.instruction)}</span>
+            </div>
+            <span class="nav-step-dist">${escapeHtml(s.distance)}</span>
+          </div>
+        `).join("");
+
+        // Attach click-to-pan handler on each navigation step
+        navStepsList.querySelectorAll(".nav-step-item").forEach((item) => {
+          item.addEventListener("click", () => {
+            const stepIdx = parseInt(item.getAttribute("data-step-idx"), 10);
+            const step = roadData.steps[stepIdx];
+            if (step && step.location) {
+              evacMap.setView(step.location, 16, { animate: true });
+              L.popup({ autoClose: true })
+                .setLatLng(step.location)
+                .setContent(`<div style="font-family: sans-serif; font-size: 12px; font-weight: 600;">${step.icon} <b>Step ${stepIdx + 1}:</b><br/>${escapeHtml(step.instruction)} (${escapeHtml(step.distance)})</div>`)
+                .openOn(evacMap);
+            }
+          });
+        });
+      }
+
+      // Smoothly fit bounds to exact road polyline
+      const roadBounds = L.latLngBounds(roadData.latLngs);
+      evacMap.fitBounds(roadBounds, { padding: [45, 45], animate: true });
+
+    } else {
+      // Fallback: draw designated waypoints corridor
+      const fallbackGlow = L.polyline(plan.routeWaypoints, {
+        color: "rgba(16, 185, 129, 0.35)",
+        weight: 12,
+        lineCap: "round"
+      }).addTo(evacLayersGroup);
+
+      const fallbackLine = L.polyline(plan.routeWaypoints, {
+        color: "#10b981",
+        weight: 4.5,
+        dashArray: "8, 10",
+        lineCap: "round"
+      }).addTo(evacLayersGroup);
+
+      activeRoadPolylines = [fallbackGlow, fallbackLine];
+
+      if (routingBadge) {
+        routingBadge.textContent = "🛡️ Designated Evacuation Corridor";
+      }
+
+      if (navStepsList) {
+        navStepsList.innerHTML = `
+          <div class="nav-step-item">
+            <div class="nav-step-left">
+              <span class="nav-step-icon">🚗</span>
+              <span class="nav-step-text">Depart ${escapeHtml(st.name)} via ${escapeHtml(plan.evacuationCorridor)}</span>
+            </div>
+            <span class="nav-step-dist">${plan.distanceKm} km</span>
+          </div>
+          <div class="nav-step-item">
+            <div class="nav-step-left">
+              <span class="nav-step-icon">🛡️</span>
+              <span class="nav-step-text">Arrive at ${escapeHtml(plan.safeZoneName)}</span>
+            </div>
+            <span class="nav-step-dist">Shelter Hub</span>
+          </div>
+        `;
+      }
+    }
+  });
+
   if (smsMetaEl) {
     smsMetaEl.textContent = `Target: ${st.city} & Surrounding Taluks (${Math.round(plan.distanceKm * 0.8)} km Radius)`;
   }
