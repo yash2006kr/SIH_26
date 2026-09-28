@@ -517,6 +517,47 @@ html[data-theme="light"] .nav-item.active {
   border-color: var(--text-muted);
 }
 
+.btn-danger {
+  background: linear-gradient(135deg, #e11d48, #be123c);
+  color: #ffffff;
+  border-color: rgba(244, 63, 94, 0.5);
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.35);
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, #f43f5e, #e11d48);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(225, 29, 72, 0.45);
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: #ffffff;
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);
+}
+
+.btn-warning:hover {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(217, 119, 6, 0.45);
+}
+
+.btn-cyclone,
+.btn-info {
+  background: linear-gradient(135deg, #0284c7, #4f46e5);
+  color: #ffffff;
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+}
+
+.btn-cyclone:hover,
+.btn-info:hover {
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.45);
+}
+
 .btn-icon {
   width: 36px;
   height: 36px;
